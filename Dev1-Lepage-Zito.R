@@ -421,7 +421,8 @@ modele_nul <- MASS::glm.nb(ClaimNb ~ 1 + offset(log(Exposure)),
 modele_complet <- modele_BinomNeg
 
 # --- Tester tous les sous-modèles ---
-all_models <- glmulti::glmulti(modele_complet)
+# all_models <- glmulti::glmulti(modele_complet)
+#' Nécessite l'installation de JavaScript pour être utilisé...
 
 # --- Méthode forward ---
 freq_forward <- MASS::stepAIC(
