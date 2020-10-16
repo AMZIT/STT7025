@@ -259,7 +259,6 @@ modele_complet <-  glm(Y ~ ., data = data, family = binomial("logit"), x=T, y=T)
 # sick_tout <- glmbb::glmbb(f,
 #                           family=binomial("logit"),
 #                           criterion='AIC',
-#                           cutoff = 30,
 #                           data=data)
 #' La fonction glmbb du package du même nom, n'est pas fait pour gérer les 
 #' variables catégorielles. Il faut donc utiliser des méthodes alternatives.
@@ -365,7 +364,6 @@ sick_model %>% anova()
 sick_model %>% coef()
 
 
-
 #============================= Question 3 ======================================
 rm(list=ls())
 
@@ -393,7 +391,7 @@ plot(modele.GAM)
 #' Aucune transformation nécessaire.
 
 
-# Analyse de la variance --------------------------------------------------
+# Analyse de la surdispersion --------------------------------------------------
 # Modèle de Poisson
 modele_Poisson <-  glm(ClaimNb ~ .-Exposure, offset = log(Exposure),
                        data = data, family = poisson("log"))
@@ -404,11 +402,15 @@ modele_Poisson %>% summary()
 # Modèle binomial négative
 modele_BinomNeg <- MASS::glm.nb(ClaimNb ~ .-Exposure + offset(log(Exposure)), 
                           data = data, link="log")
+lmtest::lrtest(modele_Poisson, modele_BinomNeg)
 
 
 AIC(modele_Poisson, modele_BinomNeg)
 BIC(modele_Poisson, modele_BinomNeg)
-0.5 *(1 - pchisq(modele_Poisson$deviance - modele_BinomNeg$deviance, 1))
+
+l0 <- logLik(modele_Poisson)
+l1 <- logLik(modele_BinomNeg)
+0.5 *(1 - pchisq(2*(l1 - l0), 1)) %>% as.numeric()
 #' Avec un test du ratio de vraisemblance, on trouve que le modèle binomial 
 #' négative est significativement mieux ajusté aux données qu'un modèle 
 #' poissonien. Les statistiques de l'AIC et du BIC confirment ce constat.
@@ -417,6 +419,9 @@ BIC(modele_Poisson, modele_BinomNeg)
 modele_nul <- MASS::glm.nb(ClaimNb ~ 1 + offset(log(Exposure)), 
                            data = data, link="log")
 modele_complet <- modele_BinomNeg
+
+# --- Tester tous les sous-modèles ---
+all_models <- glmulti::glmulti(modele_complet)
 
 # --- Méthode forward ---
 freq_forward <- MASS::stepAIC(
