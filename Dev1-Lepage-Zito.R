@@ -13,6 +13,7 @@ library(tidyverse)
 library(olsrr)
 library(glmnet)
 library(plotmo)
+library(CASdatasets)
 
 current_path = rstudioapi::getActiveDocumentContext()$path
 setwd(dirname(current_path))
@@ -172,7 +173,8 @@ add1(mortality_model, .~. +.^2 , test = "F")
 mortality_model %>% ols_regress()
 #' Le R-carré de prédiction est de 0.64; le pouvoir prédictif de ce modèle est
 #' donc très limité.
-
+ame_model <- lm(B~A1 + A2 + A3 + A6 + A8 + A9 + A14, data=data)
+anova(mortality_model, ame_model)
 
 #' Comparaison de l'AIC selon la méthode de traitement de la multicolinéarité:
 # AIC(mortality_model)
@@ -272,8 +274,8 @@ sick_forward <- MASS::stepAIC(
    k = 2
 )
 sick_forward$anova
-drop1(sick_forward, test="LRT")
-rsq::rsq(sick_forward, adj=T)
+sick_forward %>% drop1(test="LRT")
+sick_forward %>% rsq::rsq(adj=T)
 #' Différentes valeurs de k ont été testées puisque, avec k=2, ce n'est pas
 #' toutes les variables explicatives qui sont significatives au seuil de 5%.
 #' Les valeurs de k testées sont k=2,3,4. Pour chacune d'elle, la statistique
@@ -297,8 +299,8 @@ sick_backward <- MASS::stepAIC(
    k = 2
 )
 sick_backward$anova
-drop1(sick_backward, test="LRT")
-rsq::rsq(sick_backward, adj=T)
+sick_backward %>% drop1(test="LRT")
+sick_backward %>% rsq::rsq(adj=T)
 #' Même constat
 #' k=2 -> Adj R-Squared = 0.5824615
 #' k=3 -> Adj R-Squared = 0.5792386
@@ -315,8 +317,8 @@ sick_stepwise <- MASS::stepAIC(
    k = 2
 )
 sick_stepwise$anova
-drop1(sick_stepwise, test="LRT")
-rsq::rsq(sick_stepwise, adj=T)
+sick_stepwise %>% drop1(test="LRT")
+sick_stepwise %>% rsq::rsq(adj=T)
 #' Idem
 #' k=2 -> Adj R-Squared = 0.5824615
 #' k=3 -> Adj R-Squared = 0.5792386
@@ -333,19 +335,147 @@ sick_model <- sick_backward
 
 
 # Ajout d'interactions ---------------------------------------------------------
-add1(sick_model, .~. +.^2 , test = "LRT") 
-sick_model <- update(sick_model, .~. + ca:thal)
-rsq::rsq(sick_model, adj=T)
-drop1(sick_model, test="LRT")
-sick_model <- update(sick_model, .~. - exang)
-summary(sick_model)
-#' L'interaction  ca:thal est significative au seuil de 1%.
+#' Approche stepwise avec seuil d'inclusion à 5% et seuil d'exclusion à 1% pour 
+#' les interactions et à 5% pour les variables.
+sick_model %>% add1(.~. +.^2 , test = "LRT")
+sick_model <- sick_model %>% update(.~. + ca:thal)
+
+sick_model %>% drop1(test="LRT")
+sick_model <- sick_model %>% update(.~. - exang)
+
+sick_model %>% add1(.~. +.^2 , test = "LRT")
+sick_model <- sick_model %>% update(.~. + cp:slope )
+
+sick_model %>% drop1(test="LRT")
+sick_model <- sick_model %>% update(.~. - thalach)
+
+sick_model %>% drop1(test="LRT")
+sick_model <- sick_model %>% update(.~. - cp:slope )
+
+sick_model %>% add1(.~. +.^2 , test = "LRT")
+sick_model %>% drop1(test="LRT")
+#' Seule l'interaction  ca:thal est significative au seuil de 1%.
+sick_model %>% rsq::rsq(adj=T) # 0.5875979
+#' Il y a une légère amélioration du R-carré ajusté par rapport au modèle sans
+#' interaction.
 
 
 # Réponse à la question 2 ------------------------------------------------------
-sick_model %>% summary()
+sick_model %>% anova()
+sick_model %>% coef()
 
 
 
 #============================= Question 3 ======================================
 rm(list=ls())
+
+data(ausprivauto0405)
+data <- ausprivauto0405 %>% as_tibble()
+rm(ausprivauto0405)
+
+data %>% glimpse()
+data <- data %>% select(-ClaimOcc, -ClaimAmount)
+data %>% summary()
+
+# Analyse de la multicolinéarité -----------------------------------------------
+bidon <- lm(rnorm(nrow(data))~., data=data)
+ols_vif_tol(bidon)
+#' On voit que certaines valeurs de VIF sont plus grandes que 10. Cependant,
+#' celles-ci sont calculées sur toutes les variables catégorielles unitaires.
+#' On veut donc connaître le VIF agrégé. 
+car::vif(bidon)
+
+
+# Transformations ? ------------------------------------------------------------
+modele.GAM <- gam::gam(ClaimNb ~ VehValue + offset(log(Exposure)),
+                  data = data, family = poisson("log"))
+plot(modele.GAM) 
+#' Aucune transformation nécessaire.
+
+
+# Analyse de la variance --------------------------------------------------
+# Modèle de Poisson
+modele_Poisson <-  glm(ClaimNb ~ .-Exposure, offset = log(Exposure),
+                       data = data, family = poisson("log"))
+modele_Poisson %>% summary()
+(phi <- modele_Poisson$deviance / (modele_Poisson$df.residual))
+#' Il semble y avoir sous-dispersion
+
+# Modèle binomial négative
+modele_BinomNeg <- MASS::glm.nb(ClaimNb ~ .-Exposure + offset(log(Exposure)), 
+                          data = data, link="log")
+
+
+AIC(modele_Poisson, modele_BinomNeg)
+BIC(modele_Poisson, modele_BinomNeg)
+0.5 *(1 - pchisq(modele_Poisson$deviance - modele_BinomNeg$deviance, 1))
+#' Avec un test du ratio de vraisemblance, on trouve que le modèle binomial 
+#' négative est significativement mieux ajusté aux données qu'un modèle 
+#' poissonien. Les statistiques de l'AIC et du BIC confirment ce constat.
+
+# Sélection de variables -------------------------------------------------------
+modele_nul <- MASS::glm.nb(ClaimNb ~ 1 + offset(log(Exposure)), 
+                           data = data, link="log")
+modele_complet <- modele_BinomNeg
+
+# --- Méthode forward ---
+freq_forward <- MASS::stepAIC(
+   modele_nul,
+   scope = list(upper = modele_complet, lower = modele_nul),
+   trace = 0,
+   direction = "forward",
+   data = data,
+   k = 2
+)
+freq_forward$anova
+freq_forward %>% drop1(test="LRT")
+freq_forward %>% rsq::rsq(adj=T)
+#' Toutes les variables sélectionnées sont significatives
+#' Le R-carré ajusté est ridiculement petit...quelque chose cloche...
+#' possiblement que la fonction rsq est non compatible avec la fonction glm.nb.
+
+
+# --- Méthode backward ---
+freq_backward <- MASS::stepAIC(
+   modele_complet, 
+   scope = list(upper = modele_complet, lower = modele_nul),
+   trace = 0,
+   direction = "backward",
+   data = data,
+   k = 2
+)
+freq_backward$anova
+freq_backward %>% drop1(test="LRT")
+freq_backward %>% rsq::rsq(adj=T)
+#' Même constat
+
+
+# --- Méthode stepwise ---
+freq_stepwise <- MASS::stepAIC(
+   modele_nul, 
+   scope=list(upper=modele_complet, lower=modele_nul),
+   trace = 0,
+   direction = "both",
+   data = data,
+   k = 2
+)
+freq_stepwise$anova
+freq_stepwise %>% drop1(test="LRT")
+freq_stepwise %>% rsq::rsq(adj=T)
+#' Idem
+
+
+AIC(freq_forward, freq_backward, freq_stepwise)
+#' On trouve que les trois algorithmes de sélection de variables 
+#' aboutissent au même modèle.
+freq_model <- freq_forward
+
+
+# Ajout d'interactions ---------------------------------------------------------
+freq_model %>% add1(.~. +.^2 , test = "LRT")
+# Aucune interaction significative.
+
+
+# Réponse à la question 3 ------------------------------------------------------
+freq_model %>% anova()
+freq_model %>% coef()
