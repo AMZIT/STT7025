@@ -333,36 +333,11 @@ sick_model <- sick_backward
 
 
 # Ajout d'interactions ---------------------------------------------------------
-ajout_interactions <- function(model, TOL=0.1, max_iter=10) {
-   
-   model_2 <- model
-   
-   BIC_ <- numeric(max_iter + 1)
-   # BIC_[1] <- BIC(model_2)
-   BIC_[1] <- rsq::rsq(model_2, adj=T)
-   for (i in 1:max_iter){
-      lrt_test <- add1(model_2, .~. +.^2 , test = "LRT") 
-      if (min(lrt_test$`Pr(>Chi)`, na.rm = T) > 0.05) break
-      interactions <- rownames(lrt_test)
-      to_add_index <- lrt_test$`Pr(>Chi)` %>% which.min()
-      to_add <- interactions[lrt_test$`Pr(>Chi)` %>% which.min()]
-      
-      f <- as.formula(paste('.~.+', to_add))
-      model_3 <- update(model_2, f)
-      
-      # BIC_[i+1] <- BIC(model_3)
-      BIC_[1] <- rsq::rsq(model_3, adj=T)
-      if(BIC_[i+1] - BIC_[i] > TOL) break
-      
-      print(lrt_test %>% top_n(-1, `Pr(>Chi)`))
-      print(rsq::rsq(model_3, adj=T))
-      model_2 <- model_3
-   }
-   return(model_2)
-}
-sick_model <- ajout_interactions(sick_model)
+add1(sick_model, .~. +.^2 , test = "LRT") 
+sick_model <- update(sick_model, .~. + ca:thal)
 rsq::rsq(sick_model, adj=T)
 drop1(sick_model, test="LRT")
+sick_model <- update(sick_model, .~. - exang)
 summary(sick_model)
 #' L'interaction  ca:thal est significative au seuil de 1%.
 
