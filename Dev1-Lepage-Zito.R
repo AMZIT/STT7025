@@ -14,6 +14,7 @@ library(olsrr)
 library(glmnet)
 library(plotmo)
 library(CASdatasets)
+library(dplyr)
 
 current_path = rstudioapi::getActiveDocumentContext()$path
 setwd(dirname(current_path))
@@ -113,18 +114,25 @@ modele_complet2 <- retirer_variables_redondantes(modele_complet, 0.6)
 #' Le problème de multicolinéarité est maintenant réglé.
 modele_complet2 %>% summary()
 
+modele_complet3 <-  lm(B~ A1 + A2 + A8 + A9 + A10 + A11 + A13 + A14 + A15, data=data, x=TRUE, y=TRUE)
+summary(modele_complet3)
+ols_regress(modele_complet3)
 
 # --- Autre approche: régression régularisée (LASSO) ---
-modele_glmnet <- glmnet(modele_complet$x[,-1], modele_complet$y, 
-                        family='gaussian', alpha=1)
-plot_glmnet(modele_glmnet)
+modele_glmnet_lasso <- glmnet(modele_complet$x[,-1], modele_complet$y, 
+                              family='gaussian', alpha=1)
+modele_glmnet_ridge <- glmnet(modele_complet$x[,-1], modele_complet$y, 
+                              family='gaussian', alpha=0)
+
+plot_glmnet(modele_glmnet_lasso)
+
 set.seed(2020)
 cv_out <- cv.glmnet(modele_complet$x[,-1], modele_complet$y, 
                     family='gaussian', alpha=1)
 plot(cv_out)
 
-coefs <- coef(modele_glmnet, s = c(cv_out$lambda.min,
-                                    cv_out$lambda.1se))
+coefs <- coef(modele_glmnet_lasso, s = c(cv_out$lambda.min,
+                                         cv_out$lambda.1se))
 colnames(coefs) <- c("lambda.min", "lambda.1se")
 coefs
 predictors <- rownames(coefs)[which(coefs[, 1] != 0)][-1]
@@ -132,9 +140,54 @@ predictors <- rownames(coefs)[which(coefs[, 1] != 0)][-1]
 
 f <- as.formula(paste('B~', paste(predictors, collapse ='+')))
 modele_complet2 <- lm(f, data=data)
+summary(modele_complet2)
 ols_vif_tol(modele_complet2)
 #' La multicolinéarité a été réglée.
+#' 
+# --- Autre approche: régression régularisée (elastic net) ---
+modele_glmnet <- list()
 
+df_log <- data  %>% mutate(A9 = log(A9),
+                       A13 = log(A13),
+                       A14 = log(A14))
+modele_complet <-  lm(B~., data=df_log, x=TRUE, y=TRUE)
+
+vec_alpha <- seq(0,1,0.025)
+model_sortie_elasticNet <- list()
+r_adj_elasticNet <- rep(0,length(vec_alpha))
+predictors_elasticNet <- list()
+for (alp in vec_alpha) {
+   modele_glmnet[[as.character(alp)]]<- glmnet(modele_complet$x[,-1], modele_complet$y, 
+                                               family='gaussian', alpha=alp)
+   
+   cv_out <- cv.glmnet(modele_complet$x[,-1], modele_complet$y, 
+                       family='gaussian', alpha=alp)
+   
+   coefs <- coef(modele_glmnet[[as.character(alp)]], s = c(cv_out$lambda.min,
+                                                           cv_out$lambda.1se))
+   colnames(coefs) <- c("lambda.min", "lambda.1se")
+   predictors <- rownames(coefs)[which(coefs[, 1] != 0)][-1]
+   predictors_elasticNet[[as.character(alp)]] <- predictors
+   f <- as.formula(paste('B~', paste(predictors, collapse ='+')))
+   model_sortie_elasticNet[[as.character(alp)]] <- lm(f, data=df_log)
+   r_adj_elasticNet[which(vec_alpha == alp)] <- ols_regress(model_sortie_elasticNet[[as.character(alp)]])$prsq
+}
+plot(vec_alpha,r_adj_elasticNet)
+#R-carre adj maximum atteint avec elastic net
+max(r_adj_elasticNet)
+vec_alpha[which(r_adj_elasticNet == max(r_adj_elasticNet))]
+for ( alp in vec_alpha[which(r_adj_elasticNet == max(r_adj_elasticNet))]) {
+   print(predictors_elasticNet[[as.character(alp)]])
+}
+
+ols_vif_tol(model_sortie_elasticNet[[as.character(0.75)]])
+ols_vif_tol(modele_complet)
+ols_regress(model_sortie_elasticNet[[as.character(0.75)]])
+
+
+summary(modele_complet2)
+ols_vif_tol(modele_complet2)
+df_log %>% pairs()
 
 #' L'approche itérative en utilisant les proportions de variation ne donne pas
 #' les mêmes résultats que celle utilisant la régression régularisée.
@@ -162,13 +215,28 @@ plot(all_possible)
 predictors <- str_split(bests_models[1, 3], ' ') %>% unlist()
 f <- as.formula(paste("B~", paste(predictors, collapse = '+')))
 mortality_model <- lm(f, data=data)
+ols_regress(mortality_model)
+## avec transformation log ##
+all_possible <- ols_step_all_possible(modele_complet)
+(bests_models <- all_possible %>% as_tibble() %>% top_n(3, predrsq))
+#' Deux modèles se démarquent du lot. Le plus simple des deux (Index 256) 
+#' est celui qui minimise le R-carré de PRESS. Comme l'objectif de cette
+#' question est de faire de la prédiction, on favorisera ce critère par rapport
+#' aux autres.
+predictors <- str_split(bests_models[1, 3], ' ') %>% unlist()
 
+mortality_model_log <- lm(f, data=df_log)
+ols_regress(mortality_model)
+ols_regress(mortality_model_log)
 
+#
 # Ajout d'interactions ---------------------------------------------------------
 add1(mortality_model, .~. +.^2 , test = "F")
-#' Aucune interaction intéressante au seuil de 1%
-
-
+add1(mortality_model_log, .~. +.^2 , test = "F")
+#' Aucune interaction intéressante au seuil de 1% mais A2 et A4 pour le model avec log transformation
+f <- as.formula(paste("B~", paste(predictors, collapse = '+'),"+ A2*A4"))
+mortality_model_log_inter <- lm(f, data=df_log)
+ols_regress(mortality_model_log_inter)
 # Appréciation du modèle -------------------------------------------------------
 mortality_model %>% ols_regress()
 #' Le R-carré de prédiction est de 0.64; le pouvoir prédictif de ce modèle est
@@ -176,6 +244,10 @@ mortality_model %>% ols_regress()
 ame_model <- lm(B~A1 + A2 + A3 + A6 + A8 + A9 + A14, data=data)
 anova(mortality_model, ame_model)
 
+ame_model <- lm(B ~ A1 + A2 + A4+ A6 + A7 + A8 + A9 + A13 + A2 * A4, data=df_log)
+anova( ame_model,mortality_model_log_inter)
+
+ols_regress(ame_model)
 #' Comparaison de l'AIC selon la méthode de traitement de la multicolinéarité:
 # AIC(mortality_model)
 #' Méthode itérative: AIC: 603.0711,    Pred R-Squared 0.640
