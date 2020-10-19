@@ -216,15 +216,25 @@ predictors <- str_split(bests_models[1, 3], ' ') %>% unlist()
 f <- as.formula(paste("B~", paste(predictors, collapse = '+')))
 mortality_model <- lm(f, data=data)
 ols_regress(mortality_model)
+#' Comparaison de l'AIC selon la méthode de traitement de la multicolinéarité:
+# AIC(mortality_model)
+#' Méthode itérative: AIC: 603.0711,    Pred R-Squared 0.640
+#' Régression LASSO : AIC: 598.7574,    Pred R-Squared 0.665
+#' 
+#' Verdict: Pour traiter la multicolinéarité, la régression LASSO permet de
+#' conserver un meilleur pouvoir prédictif.
+#' 
 ## avec transformation log ##
 all_possible <- ols_step_all_possible(modele_complet)
 (bests_models <- all_possible %>% as_tibble() %>% top_n(3, predrsq))
-#' Deux modèles se démarquent du lot. Le plus simple des deux (Index 256) 
-#' est celui qui minimise le R-carré de PRESS. Comme l'objectif de cette
-#' question est de faire de la prédiction, on favorisera ce critère par rapport
-#' aux autres.
-predictors <- str_split(bests_models[1, 3], ' ') %>% unlist()
-
+(bests_models <- all_possible %>% as_tibble() %>% top_n(-3, aic))
+(bests_models <- all_possible %>% as_tibble() %>% top_n(-3, sbic))
+#' On choisit le meilleur PRESS qu on peut obtenir est un model ou on risque avoir un petit overfit, 
+#' car l ecart entre le rsuqre et predrsq est assez important. On cherche donc un modele moins complex
+#' On regard alors avec le AIC ou le BIC. On choisit le model avec l index 9949 car il a le meilleur BIC, 
+#' un tres bon AIC et une predrsq legerement moins bon de 0.69.
+predictors <- str_split(bests_models[3, 3], ' ') %>% unlist()
+f <- as.formula(paste("B~", paste(predictors, collapse = '+')))
 mortality_model_log <- lm(f, data=df_log)
 ols_regress(mortality_model)
 ols_regress(mortality_model_log)
@@ -233,7 +243,7 @@ ols_regress(mortality_model_log)
 # Ajout d'interactions ---------------------------------------------------------
 add1(mortality_model, .~. +.^2 , test = "F")
 add1(mortality_model_log, .~. +.^2 , test = "F")
-#' Aucune interaction intéressante au seuil de 1% mais A2 et A4 pour le model avec log transformation
+#' Aucune interaction intéressante au seuil de 1% 
 f <- as.formula(paste("B~", paste(predictors, collapse = '+'),"+ A2*A4"))
 mortality_model_log_inter <- lm(f, data=df_log)
 ols_regress(mortality_model_log_inter)
@@ -244,25 +254,19 @@ mortality_model %>% ols_regress()
 ame_model <- lm(B~A1 + A2 + A3 + A6 + A8 + A9 + A14, data=data)
 anova(mortality_model, ame_model)
 
-ame_model <- lm(B ~ A1 + A2 + A4+ A6 + A7 + A8 + A9 + A13 + A2 * A4, data=df_log)
+ame_model <- lm(B ~ A1 + A2 + A4+ A6 + A7 + A8 + A9 + A13 + A2 * A4, data=df_log) # si on choisit le predrsq comme critaire principal
 anova( ame_model,mortality_model_log_inter)
 
-ols_regress(ame_model)
-#' Comparaison de l'AIC selon la méthode de traitement de la multicolinéarité:
-# AIC(mortality_model)
-#' Méthode itérative: AIC: 603.0711,    Pred R-Squared 0.640
-#' Régression LASSO : AIC: 598.7574,    Pred R-Squared 0.665
-#' 
-#' Verdict: Pour traiter la multicolinéarité, la régression LASSO permet de
-#' conserver un meilleur pouvoir prédictif.
-
+ols_regress(mortality_model_log)
 
 # Réponse à la question 1  ------------------------------------------------------------------
 new_data <- read.table(text="40 30 80 9 3 10 77 4100 13 46 15 25 26 145 55") %>%
    as_tibble()
 colnames(new_data) <- colnames_[-16]
-
-predict.lm(mortality_model, newdata = new_data,
+new_data <- new_data %>% mutate(A9 = log(A9),
+                                A13 = log(A13),
+                                A14 = log(A14))
+predict.lm(mortality_model_log, newdata = new_data,
                type='response', interval = 'prediction')
 
 
