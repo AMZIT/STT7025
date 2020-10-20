@@ -1,0 +1,235 @@
+\documentclass{article}
+\usepackage[top=0.75in, bottom=0.75in, left=1.25in, right=1in]{geometry} % formatage
+\usepackage[frenchb]{babel}
+\usepackage[utf8]{inputenc} 
+\usepackage{amsmath} % pour utiliser des maths de base 
+\usepackage{amssymb} % pour faire \mathcal{}=>des lettres ''cursives''
+\usepackage{amsthm} % La petite boîte de fin de preuve
+\usepackage{graphicx} % pour importer des images...http://www.tex.ac.uk/cgi-bin/texfaq2html?label=figurehere
+\usepackage{titlesec} % automatique, pour faire des sous-titres moins laids
+%\usepackage{cancel}
+\usepackage[procnames]{listings}
+\usepackage[T1]{fontenc}        % http://tex.stackexchange.com/questions/11897/draw-a-diagonal-arrow-across-an-expression-in-a-formula-to-show-that-it-vanishes%
+\usepackage[squaren]{SIunits}
+\usepackage{subcaption} % Avoir plusieurs sous-figures (graphiques) dans une figures et pouvoire les étiqueter
+\usepackage{color}
+\usepackage{lipsum}
+\usepackage{caption}
+\usepackage{enumitem} % Permet d'avoir plus de flexibilité dans les enumerations.
+\usepackage{wasysym} 
+\usepackage{braket}
+\usepackage{mathtools}
+\usepackage{multirow} % Fusionner des lignes dans un tableau
+\usepackage{mathrsfs} % Faire le symbole de la transformée de Laplace
+\usepackage{bbm}
+\usepackage{array}
+\usepackage{diagbox} % diagonale dans les tableaux
+\usepackage{dsfont} % Faire des belles indicatrices                         
+\usepackage{float} % placer les tableaux et images où tu veux
+\usepackage{listings}
+\usepackage[utf8]{inputenc}
+\usepackage{comment}
+\usepackage{pst-node}
+\usepackage{fancyvrb} % Les varbatims gardent l'indentation
+\usepackage{enumitem}
+\usepackage{breakcites} % Faire en sorte que les citations ne sortent pas dans la marge
+\usepackage{graphicx} % Insérer des graphiques
+\usepackage{pgfplots}
+\usepackage{hyperref} % Faire des hyperliens
+\usepackage{verbatim} % Inclure un fichier .text en verbatim
+\usepackage{xcolor}
+\pgfplotsset{width=10cm, compat=1.9}
+
+% Changer la couleur des hyperliens
+\hypersetup{colorlinks = true,
+	allcolors  = blue, % default color = black
+	%	citecolor  = black
+}  
+
+
+% redefine \VerbatimInput
+\RecustomVerbatimCommand{\VerbatimInput}{VerbatimInput}%
+{fontsize=\footnotesize,
+	%
+	frame=lines,  % top and bottom rule only
+	framesep=2em, % separation between frame and text
+	rulecolor=\color{Gray},
+	%
+	label=\fbox{\color{Black}data.txt},
+	labelposition=topline,
+	%
+	commandchars=\|\(\), % escape character and argument delimiters for
+	% commands within the verbatim
+	commentchar=*        % comment character
+}
+
+
+\newcommand{\RomanNumeralCaps}[1]
+    {\MakeUppercase{\romannumeral #1}}
+
+\newtheorem{lemme}{Lemme}
+\newtheorem{preuve}{Preuve}
+\newtheorem{code}{Code informatique}
+\newtheorem{exemple}{Exemple}
+\newtheorem{scenario}{Scénario}
+\newtheorem{algo}{Algorithme}
+\newtheorem{definition}{Définition}
+\newtheorem{proposition}{Proposition}
+\newtheorem{propriete}{Propriété}
+\newtheorem{test_hypothese}{Teste d'hypothèse}
+
+\begin{document}
+	\renewcommand{\tablename}{Tableau}
+	\renewcommand{\figurename}{Illustration}
+	
+	\begin{titlepage}
+		\centering % Centre everything on the title page
+		
+		\scshape % Use small caps for all text on the title page
+		
+		\vspace*{7\baselineskip} % White space at the top of the page
+		
+		%------------------------------------------------
+		%	Title
+		%------------------------------------------------
+		
+		\rule{\textwidth}{1.6pt}\vspace*{-\baselineskip}\vspace*{2pt} % Thick horizontal rule
+		\rule{\textwidth}{0.4pt} % Thin horizontal rule
+		
+		\vspace{0.75\baselineskip} % Whitespace above the title
+		{\LARGE Travail pratique 1\\} % Title
+%		\vspace{0.75\baselineskip}
+		\vspace{0.75\baselineskip} % Whitespace below the title
+		
+		\rule{\textwidth}{0.4pt}\vspace*{-\baselineskip}\vspace{3.2pt} % Thin horizontal rule
+		\rule{\textwidth}{1.6pt} % Thick horizontal rule
+		
+		\vspace{4\baselineskip} % Whitespace after the title block
+		
+		%------------------------------------------------
+		%	Subtitle
+		%------------------------------------------------
+		
+		Travail présenté à \\
+		{\scshape\Large M. Thierry Duchesne\\}
+		
+		\vspace*{4\baselineskip}
+		
+		Dans le cadre du cours\\
+		{\scshape\Large Théorie et applications des méthodes de régression \\ STT-7125}
+		
+		% Subtitle or further description
+		
+		\vspace*{4\baselineskip} % Whitespace under the subtitle
+		
+		%------------------------------------------------
+		%	Editor(s)
+		%------------------------------------------------
+		
+		Réalisé par l'équipe 7:\\
+		{\scshape\Large Alexandre Lepage\\
+		\& Amedeo Zito} % Editor list
+		
+		\vspace*{5\baselineskip}
+		
+		le 2 novembre 2020
+		
+		\vspace{0.4\baselineskip} % Whitespace below the editor list
+		
+		\vfill % Whitespace between editor names and publisher logo
+		
+		%------------------------------------------------
+		%	Publisher
+		%------------------------------------------------
+		
+		\includegraphics[height=1.2cm]{UL_P.pdf}\\
+		
+		Faculté des sciences et de génie\\
+		École d'actuariat\\
+		Université Laval
+		
+		\vspace*{3\baselineskip}
+		
+	\end{titlepage}
+	
+%	\pagenumbering{Roman} % Pagination en chiffres romains
+%	\setcounter{page}{0} 
+%	
+%	\newpage
+%	\strut % Page blanche
+%	\newpage
+%	
+%	\tableofcontents
+%	\renewcommand{\listfigurename}{Liste des illustrations}
+%	\newpage
+%	
+%	\listoffigures
+%	\listoftables
+%	\newpage
+%	
+%	\pagenumbering{arabic} % Pagination en chiffres normaux
+%	\setcounter{page}{1}
+
+
+\section{Introduction}
+Les méthodes de régression linéaires sont fort utiles afin d'identifier des variables pouvant expliquer un comportement ou un phénomène et elles peuvent s'avérer efficaces pour faire de la prédiction si les données disponibles sont appropriées.\\
+
+L'objet de ce travail est d'expérimenter l'utilisation de cette famille de modèles afin de résoudre trois problèmes de nature différente. 
+%
+La premier d'entre eux consiste à réaliser une régression linéaire afin de prédire le taux de mortalité à partir de variables mesurant la pollution environnementale et les caractéristiques socio-démographiques de 60 localités.
+%
+Le second problème consiste à construire un modèle de régression qui estime
+la probabilité de diagnostic de maladie coronarienne. L'objectif étant de définir les facteurs associés à une hausse du risque d’un diagnostic positif de maladie coronarienne.
+%
+En ce qui a trait au dernier problème, celui-ci s'inscrit dans un contexte d'assurance automobile et consiste à construire un modèle afin de voir s’il y a une association entre les caractéristiques du véhicule et de l'assuré et le nombre de réclamations.
+
+\section{Analyse et traitement de la multicollinéarité}\label{sect_multicollinearite}
+La force des modèles de régression linéaire provient de l'hypothèse que la matrice de schéma $\boldsymbol{X}$ est de plein rang; c.-à-d. qu'aucune colonne n'est linéairement dépendante des autres colonnes. Ce faisant, on s'assure qu'il n'existe qu'un seul inverse possible à la matrice $\boldsymbol{X}'\boldsymbol{X}$; de ce fait, on s'assure également que le vecteur des paramètres du modèle $\hat{\boldsymbol{\beta}}$ soit unique (un seul minimum à la fonction de perte utilisé pour l'entraînement). Ainsi, s'il existe un problème de multicolinéarité, il en découlerait que la matrice de schéma $\boldsymbol{X}$ ne serait plus de plein rang et il pourrait exister plusieurs minimum locaux à la fonction de perte utilisée pour entraîner le modèle. Il en résulterait alors une instabilité dans la convergence des paramètres et la variance de certaines de ces composantes serait démesurément grande.
+%
+Pour cette raison, avant même de réaliser la sélection de modèle pour chacune des étapes, il faut d'abord mesurer le degré de multicollinéarité entre les potentielles variables explicatives disponibles.\\
+
+Un outil bien pratique pour détecter la présence de multicollinéarité est le facteur d’inflation de la variance (VIF). Ce dernier peut être calculé avec la fonction \texttt{ols\_vif\_tol()} du \textit{package} \texttt{olsrr} en \texttt{R}. Cependant, si les données utilisées comportent une ou plusieurs variables catégorielles, cette mesure n'est plus adéquate (voir \cite{fox1992generalized}). Dans ce cas, on préférera le facteur d'inflation généralisé (GVIF) et sa version standardisée: $(\mathrm{GVIF}_j)^{1/(2 p_j)}$ , où $p_j$ correspond au nombre de degrés de libertés (le nombre de paramètres) rattachés à la $j^\mathrm{e}$ variable explicative du modèle, $j\in \{1,\dots,p'\}$. 
+À noter que lorsque $p_j=1$, alors $\mathrm{GVIF}_j = \mathrm{VIF}_j$.
+%
+Afin de mesurer cette métrique, Fox et Monette ont créé la fonction \texttt{vif} du \textit{package} \texttt{car}. De façon générale, plusieurs auteurs suggèrent de considérer que $\mathrm{VIF_j}>10$ pourrait signaler un problème de multicolinéarité. En suivant cette logique, on peut considérer qu'il y a problème de multicolinéarité si $(\mathrm{GVIF}_j)^{1/(2 p_j)} > \sqrt{10} \approx 3.16,$ pour $j=1,\dots,p'$.\\
+
+Si, effectivement, un problème de multicolinéarité est détecté, alors la fonction \texttt{ols\_eigen\_cindex()} du \textit{package} \texttt{olsrr} permet de faire un diagnostique plus approfondi. En effet, cette fonction permet de calculer les valeurs propres (\textit{eigen values}) associées à la matrice des coefficients de corrélation échantillonnaux $\boldsymbol{X^{\star}}'\boldsymbol{X^{\star}}$. 
+%
+À partir de celles-ci, elle calcule des indices de conditionnement définis comme
+$$\phi_j = \sqrt{\frac{\lambda_{max}}{\lambda_j}},\ j=1,\dots,p',$$
+où $\lambda_j$ correspond à la $j$-ème valeur propre de $\boldsymbol{X^{\star}}'\boldsymbol{X^{\star}}$ et $\lambda_{max}=\max(\lambda_1,\dots,\lambda_{p'}).$
+%
+Pour chaque valeur de $\phi_j$ plus grande que 30, on considérera la  proportion de la variance de $\hat{\beta}_l$ qui est expliquée par la $j$-ème dépendance linéaire, pour $l=1,\dots,p'$. C.-à-d. 
+$$ p_{lj} = \frac{v_{lj}^2/\lambda_j}{c_{jj}},$$
+où $v_{lj}$ correspond au $l$-ème élément du vecteur propre $\boldsymbol{v}_j$ associé à la $j$-ème valeur propre $\lambda_j$ et $c_{jj} = \sum_{l=1}^{p'}v_{lj}^2/\lambda_j$. 
+Si $p_{lj} > 0.6$, $\{j:\phi_j>30\}$, alors on conclu que la $l$-ème variable explicative contribue à la multicolinéarité et cause problème.\\
+
+Dans ce cas, les solutions possibles consistent à réduire la dimension de la matrice de schéma en les regroupant. Par exemple, on peut les sommer ou calculer leur moyenne. Autrement, il est aussi possible de réaliser une transformation non linéaire de ces variables (p.ex. une transformation logarithmique ou racine carrée).
+
+\section*{Question 1}
+	Pour la première question de ce travail, on considère un jeu de données présentant des variables mesurant la pollution environnementale et les caractéristiques socio-démographiques de 60 localités. L'objectif de cette question est de valider qu'il est possible de prédire la mortalité d'une région en fonction de ces variables explicatives et de donner un estimé ponctuel ainsi qu’un intervalle de confiance à 95\% sur une observation de donnée.\\
+	
+	Pour atteindre cet objectif, la première étape consiste à réaliser une analyse de multicollinéarité telle que décrite dans la section \ref{sect_multicollinearite}. Se faisant, on découvre que les VIFs pour les variables A13 et A12 sont largement supérieures à 10. Conséquemment, il faut aller plus loin dans le diagnostique en utilisant la fonction \texttt{ols\_eigen\_cindex()} du \textit{package} \texttt{olsrr}. Le tableau retourné par la fonction nous indique que les indices de conditionnement $\phi_9$ à $\phi_{16}$ sont supérieurs à 30. Le tableau \ref{tbl_diagnosis_multicol_qst1} présente les proportions de variance d'intérêt pour $\lambda_j, j=9,\dots,16$.
+	\begin{table}[ht]
+		\centering
+		\begin{tabular}{crlc}
+			\hline
+			$j$ & $\phi_j$ & Variable & $p_{lj}$ \\ 
+			\hline
+			11 & 53.01 & A12 & 0.79 \\ 
+			11 & 53.01 & A13 & 0.73 \\ 
+			14 & 112.87 & A3 & 0.60 \\ 
+			15 & 131.38 & A6 & 0.69 \\ 
+			16 & 400.62 & A5 & 0.81 \\ 
+			\hline
+		\end{tabular}
+	\caption{Variables responsables de l'inflation de la variance.}
+	\label{tbl_diagnosis_multicol_qst1}
+	\end{table}
+	
+	
+	\clearpage
+	\bibliographystyle{apalike}
+	\bibliography{BibGLM}	
+	
+\end{document}
