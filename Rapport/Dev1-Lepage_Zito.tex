@@ -198,35 +198,94 @@ Si, effectivement, un problème de multicolinéarité est détecté, alors la fo
 À partir de celles-ci, elle calcule des indices de conditionnement définis comme
 $$\phi_j = \sqrt{\frac{\lambda_{max}}{\lambda_j}},\ j=1,\dots,p',$$
 où $\lambda_j$ correspond à la $j$-ème valeur propre de $\boldsymbol{X^{\star}}'\boldsymbol{X^{\star}}$ et $\lambda_{max}=\max(\lambda_1,\dots,\lambda_{p'}).$
+Ces indices de conditionnement sont des indicateurs de la force de dépendance linéaire unissant certaines variables.
 %
-Pour chaque valeur de $\phi_j$ plus grande que 30, on considérera la  proportion de la variance de $\hat{\beta}_l$ qui est expliquée par la $j$-ème dépendance linéaire, pour $l=1,\dots,p'$. C.-à-d. 
+Ainsi, on regardera la ligne du tableau correspondant à la valeur de $\phi_j$ qui est la plus élevée. Une règle du pousse veut que si $\phi_j > 30$, alors on est en présence de multicolinéarité. Dans ce cas, on considérera la  proportion de la variance de $\hat{\beta}_l$ qui est expliquée par la $j$-ème dépendance linéaire, pour $l=1,\dots,p'$. C.-à-d. 
 $$ p_{lj} = \frac{v_{lj}^2/\lambda_j}{c_{jj}},$$
 où $v_{lj}$ correspond au $l$-ème élément du vecteur propre $\boldsymbol{v}_j$ associé à la $j$-ème valeur propre $\lambda_j$ et $c_{jj} = \sum_{l=1}^{p'}v_{lj}^2/\lambda_j$. 
-Si $p_{lj} > 0.6$, $\{j:\phi_j>30\}$, alors on conclu que la $l$-ème variable explicative contribue à la multicolinéarité et cause problème.\\
+Si $p_{lj} > 0.6$, alors on conclu que la $l$-ème variable explicative contribue à la $j^\mathrm{e}$ multicolinéarité et cause problème.\\
 
-Dans ce cas, les solutions possibles consistent à réduire la dimension de la matrice de schéma en les regroupant. Par exemple, on peut les sommer ou calculer leur moyenne. Autrement, il est aussi possible de réaliser une transformation non linéaire de ces variables (p.ex. une transformation logarithmique ou racine carrée).
+Dans ce cas, les solutions possibles consistent à appliquer une transformation non linéaire sur les variables explicatives (p.ex. transformation logarithmique ou racine carrée), réduire la dimension de la matrice de schéma en retirant la variable la plus problématique. S'il y a plusieurs valeurs de $l$ pour lesquelles $p_{lj}>0.5$ pour un même $j$, alors il est possible de les regrouper à l'aide d'une moyenne. Par exemple, pour $j=\underset{j\in\{1,\dots,p'\}}{\mathrm{argmax}}\{\phi_j\}$, si on a $p_{1j}>0.5$ et $p_{2j}>0.5$, alors on peut combiner $x_1$ et $x_2$ de la façon suivante: $(x_1+x_2)/2$.\\
 
-\section*{Question 1}
-	Pour la première question de ce travail, on considère un jeu de données présentant des variables mesurant la pollution environnementale et les caractéristiques socio-démographiques de 60 localités. L'objectif de cette question est de valider qu'il est possible de prédire la mortalité d'une région en fonction de ces variables explicatives et de donner un estimé ponctuel ainsi qu’un intervalle de confiance à 95\% sur une observation de donnée.\\
+Après avoir réalisé ces étapes, il faut recommencer itérativement ce processus jusqu'à ce qu'il n'y ait plus de problème soulevé par l'analyse du VIF ou du GVIF.
+
+
+\section{Question 1}
+
+	Pour la première question de ce travail, on considère un jeu de données présentant des variables mesurant la pollution environnementale et les caractéristiques socio-démographiques de 60 localités. L'objectif de cette question est de valider qu'il est possible de prédire la mortalité d'une région en fonction de ces variables explicatives et de donner un estimé ponctuel ainsi qu’un intervalle de confiance à 95\% sur une observation de donnée.
 	
-	Pour atteindre cet objectif, la première étape consiste à réaliser une analyse de multicollinéarité telle que décrite dans la section \ref{sect_multicollinearite}. Se faisant, on découvre que les VIFs pour les variables A13 et A12 sont largement supérieures à 10. Conséquemment, il faut aller plus loin dans le diagnostique en utilisant la fonction \texttt{ols\_eigen\_cindex()} du \textit{package} \texttt{olsrr}. Le tableau retourné par la fonction nous indique que les indices de conditionnement $\phi_9$ à $\phi_{16}$ sont supérieurs à 30. Le tableau \ref{tbl_diagnosis_multicol_qst1} présente les proportions de variance d'intérêt pour $\lambda_j, j=9,\dots,16$.
-	\begin{table}[ht]
+	\subsection{Traitement de la multicollinéarité}
+	
+	Pour atteindre cet objectif, la première étape consiste à réaliser une analyse de multicollinéarité telle que décrite dans la section \ref{sect_multicollinearite}. Se faisant, on découvre que les VIFs pour les variables A12 et A13 sont supérieures à 10. Afin de traiter ce problème, on peut commencer par regarder s'il est pertinent d'effectuer une transformation non linéaire de certaines variables explicatives. Afin de visualiser les options envisageable, les illustrations \ref{Qst1_transformations_1} à \ref{Qst1_transformations_5} présentent l'effet d'une transformation logarithmique (au centre) et celui d'une transformation racine carrée (à droite) sur la relation existant entre la variable endogène et chacune des variables explicatives. Si on voit que cette transformation améliore la relation de linéarité existant entre les variables en question, alors on procède à la transformation appropriée. Suite à l'analyse des illustrations \ref{Qst1_transformations_1} à \ref{Qst1_transformations_5}, on en vient à considérer que les variables A12 et A13 méritent à recevoir une transformation logarithmique, de même que les variables A9 et A14 profiterait à recevoir une transformation racine carrée. Afin de valider ces observations, on teste différents modèles utilisant plusieurs combinaisons de transformations. Il advient que le modèle complet possédant l'AIC le plus petit est le suivant:
+	\begin{align}\label{modele_complet}
+		\mathrm{B} &\sim \mathrm{A1 + A2 + A3 + A4 + A5 + A6 + A7 + A8 + I(sqrt(A9))}\\
+			&\mathrm{+ A10 + A11 + I(log(A12)) + I(log(A13)) + I(log(A14)) + A15}.\nonumber
+	\end{align}
+	
+	Une fois que ces transformations sont effectuées, on refait l'analyse des VIFs. Puisque celle-ci nous indique que la multicollinéarité n'est toujours pas réglée, on procède aux étapes décrites dans la section \ref{sect_multicollinearite} après quoi on trouve le modèle suivant:
+	\begin{equation}\label{modele_traitement_multicol_methode_iterative}
+		\mathrm{B} \sim \mathrm{A1 + A2 + A8 + A11 + I(log(A14)) + I(log(sqrt(A12 * A13)))}.
+	\end{equation}
+	
+	À titre comparatif, nous avons voulu tester s'il était possible d'avoir un modèle plus performant si le traitement de la multicolinéarité était fait par sélection de variables en utilisant une régression LASSO. Avec la fonction \texttt{glm.net} du \textit{package} du même nom et avec le paramètre \texttt{alpha=1}, on essaie plusieurs valeurs pour le terme de pénalité $\lambda$ en commençant par celui qui est le plus inclusif (lambda le plus petit). Ainsi, on trouve que la valeur de $\lambda$ qui est minimal tout en minimisant la statistique de déviance et en éliminant la multicolinéarité est $\lambda = 5.98761443432345.$ Avec ce dernier, on trouve le modèle suivant:
+	\begin{equation}\label{modele_traitement_multicol_methode_LASSO}
+		\mathrm{B} \sim \mathrm{A1 + A2 + A6 + A7 + A8 + I(log(A13)) + I(log(A14)) + I(sqrt(A9))}.
+	\end{equation}
+	Ainsi, si on compare les modèles \eqref{modele_traitement_multicol_methode_iterative} et \eqref{modele_traitement_multicol_methode_LASSO}, on trouve que le modèle \eqref{modele_traitement_multicol_methode_LASSO} est celui qui minimise l'AIC et qui maximise également la statistique du $R^2$ de prédiction. Conséquemment, il s'agira du modèle de base utilisé pour la sélection des variables.
+	
+	\subsection{Sélection des variables explicatives}
+	On se rappelle que l'objectif de cette question est de construire un modèle prédictif. Conséquemment, pour se faire, l'idéal est de produire tous les sous-modèles possibles découlant de \eqref{modele_traitement_multicol_methode_LASSO}.
+	Cette opération peut être réalisée avec la fonction \texttt{ols\_step\_all\_possible} du \textit{package} \texttt{olsrr}. Une fois que tous les sous-modèles sont produits, on regarde les 3 modèles qui maximisent la statistique du $R^2$ de prédiction comme le démontre l'illustration \ref{Qst1_all_possible_models_top3}.
+	\begin{figure}[H]
 		\centering
-		\begin{tabular}{crlc}
-			\hline
-			$j$ & $\phi_j$ & Variable & $p_{lj}$ \\ 
-			\hline
-			11 & 53.01 & A12 & 0.79 \\ 
-			11 & 53.01 & A13 & 0.73 \\ 
-			14 & 112.87 & A3 & 0.60 \\ 
-			15 & 131.38 & A6 & 0.69 \\ 
-			16 & 400.62 & A5 & 0.81 \\ 
-			\hline
-		\end{tabular}
-	\caption{Variables responsables de l'inflation de la variance.}
-	\label{tbl_diagnosis_multicol_qst1}
-	\end{table}
+		\includegraphics[width=\textwidth]{graphiques/Qst1_all_possible_models_top3}
+		\caption{Résultats des trois meilleurs modèles selon la statistique du $R^2$ de prédiction.}
+		\label{Qst1_all_possible_models_top3}
+	\end{figure}
+	Comme les modèles 219 et 247 sont très comparables, on choisira celui qui est le plus simple étant donné que le jeu de données d'entraînement comporte très peu d'observations (60). Conséquemment, le modèle sélectionné est le suivant:
+	\begin{equation}\label{modele_variables_selectionnees}
+		\mathrm{B} \sim \mathrm{A1 + A2 + A6 + A8 + I(log(A13)) + I(sqrt(A9))}.
+	\end{equation}
+	À ce stade, il pourrait être intéressant d'observer des interactions entre ces variables. Pour identifier celles qui sont d'intérêt, on applique le test F partiel sur toutes les interactions de 1er ordre possible. Se faisant, on trouve qu'aucune des interactions n'est significative au seuil de 1\%. Donc, le modèle \eqref{modele_variables_selectionnees} correspond à notre modèle final.\\
 	
+	Avec la fonction \texttt{ols\_regress} du \textit{package} \texttt{olsrr}, on peut calculer plusieurs statistiques d'intérêt pour décrire celui-ci. D'une part, on a un $R^2$ de prédiction qui est de 71\%, ce qui est très bon considérant que la mortalité est un phénomène complexe auquel il est impossible de décrire à 100\% avec des variables explicatives. D'autre part, la statistique de Wald nous indique que chacune des variables explicatives incluses dans le modèle est significative à un seuil de 5\%.
+	
+	\subsection{Calcule de la prédiction}
+	Maintenant que l'on a un modèle appréciable, on aimerait calculer un estimé ponctuel ainsi qu’un intervalle de confiance à 95\% pour le taux de mortalité à un endroit pour lequel les variables A1 à A15 valent respectivement
+	\begin{center}
+		40 30 80 9 3 10 77 4100 13 46 15 25 26 145 55.
+	\end{center}
+	Avec la fonction \texttt{predict} du \textit{package} \texttt{stats}, on obtient un estimé de $\hat{B} = 999.4799$ ainsi qu'un intervalle de prédiction correspondant à  $B \in [936.0751, 1062.885]$.
+	
+\section{Question 2}
+ 
+	\appendix
+	\section{Illustrations}
+	\begin{figure}[H]
+		\includegraphics[width=\textwidth]{graphiques/Qst1_transformations_1}
+		\caption{À gauche, on compare la variable endogène B avec les variables exogènes A1 à A3. Au centre, on compare la même relation, mais avec une transformation logarithmique effectuée sur les variables exogènes. À droite, c'est la transformation racine carrée qui est appliquée.}
+		\label{Qst1_transformations_1}
+	\end{figure}
+	\begin{figure}[H]
+		\includegraphics[width=\textwidth]{graphiques/Qst1_transformations_2}
+		\caption{À gauche, on compare la variable endogène B avec les variables exogènes A4 à A6. Au centre, on compare la même relation, mais avec une transformation logarithmique effectuée sur les variables exogènes. À droite, c'est la transformation racine carrée qui est appliquée.}
+		\label{Qst1_transformations_2}
+	\end{figure}
+	\begin{figure}[H]
+		\includegraphics[width=\textwidth]{graphiques/Qst1_transformations_3}
+		\caption{À gauche, on compare la variable endogène B avec les variables exogènes A7 à A9. Au centre, on compare la même relation, mais avec une transformation logarithmique effectuée sur les variables exogènes. À droite, c'est la transformation racine carrée qui est appliquée.}
+		\label{Qst1_transformations_3}
+	\end{figure}
+	\begin{figure}[H]
+		\includegraphics[width=\textwidth]{graphiques/Qst1_transformations_4}
+		\caption{À gauche, on compare la variable endogène B avec les variables exogènes A10 à A12. Au centre, on compare la même relation, mais avec une transformation logarithmique effectuée sur les variables exogènes. À droite, c'est la transformation racine carrée qui est appliquée.}
+		\label{Qst1_transformations_4}
+	\end{figure}
+	\begin{figure}[H]
+		\includegraphics[width=\textwidth]{graphiques/Qst1_transformations_5}
+		\caption{À gauche, on compare la variable endogène B avec les variables exogènes A13 à A15. Au centre, on compare la même relation, mais avec une transformation logarithmique effectuée sur les variables exogènes. À droite, c'est la transformation racine carrée qui est appliquée.}
+		\label{Qst1_transformations_5}
+	\end{figure}
 	
 	\clearpage
 	\bibliographystyle{apalike}
