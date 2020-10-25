@@ -289,6 +289,15 @@ data <- data %>% mutate(
 bidon <- lm(rnorm(nrow(data))~., data=data)
 ols_vif_tol(bidon)
 #' Il n'y a aucun signe de multicolinéarité.
+cc <- c("age", "trestbps","chol","thalach" ,"oldpeak","ca"  )
+# Analyse préliminaire
+par(mfrow=c(3,3))
+for (l in cc) {
+   boxplot( as.formula(paste0(l," ~ Y")),data = data)
+   boxplot( as.formula(paste0("I(log(",l,")) ~ Y")),data = data)
+   boxplot( as.formula(paste0("I(sqrt(",l,")) ~ Y")),data = data)
+}
+par(mfrow=c(1,1))
 
 
 # Transformations ? ------------------------------------------------------------
@@ -410,7 +419,6 @@ sick_model %>% rsq::rsq(adj=T) # 0.5875979
 sick_model %>% anova()
 sick_model %>% coef()
 
-
 #============================= Question 3 ======================================
 rm(list=ls())
 
@@ -430,6 +438,15 @@ ols_vif_tol(bidon)
 #' On veut donc connaître le VIF agrégé. 
 car::vif(bidon)
 
+# Analyse Preliminaire
+cc <- c("Exposure" ,"VehValue" )
+par(mfrow=c(2,3))
+for (l in cc) {
+   boxplot( as.formula(paste0(l," ~ ClaimNb")),data = data)
+   boxplot( as.formula(paste0("I(log(",l,")) ~ ClaimNb")),data = data)
+   boxplot( as.formula(paste0("I(sqrt(",l,")) ~ ClaimNb")),data = data)
+}
+par(mfrow=c(1,1))
 
 # Transformations ? ------------------------------------------------------------
 modele.GAM <- gam::gam(ClaimNb ~ VehValue + offset(log(Exposure)),
@@ -532,3 +549,4 @@ freq_model %>% add1(.~. +.^2 , test = "LRT")
 # Réponse à la question 3 ------------------------------------------------------
 freq_model %>% anova()
 freq_model %>% coef()
+
