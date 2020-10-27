@@ -268,15 +268,15 @@ names(data) <- c("age", "sex", "cp", "trestbps", "chol", "fbs", "restecg",
 data %>% glimpse()
 data %>% summary()
 data <- data %>% mutate(
-   sex = as.factor(sex),
-   cp = as.factor(cp),
-   fbs = as.factor(fbs),
-   restecg = as.factor(restecg),
-   exang = as.factor(exang),
-   slope = as.factor(slope),
+   sex = factor(sex),
+   cp = factor(cp),
+   fbs = factor(fbs),
+   restecg = factor(restecg),
+   exang = exang,
+   slope = factor(slope),
    ca = as.integer(na_if(ca, '?')),
-   thal = as.factor(as.integer(na_if(thal, '?'))),
-   Y = as.factor(1*(num>0)),
+   thal = factor(as.integer(na_if(thal, '?'))),
+   Y = 1*(num>0),
    num = NULL
 ) %>% drop_na()
 
@@ -320,7 +320,7 @@ modele_complet <-  glm(Y ~ ., data = data, family = binomial("logit"), x=T, y=T)
 #' variables catégorielles. Il faut donc utiliser des méthodes alternatives.
 
 # --- Méthode forward ---
-sick_forward <- MASS::stepAIC(
+   sick_forward <- MASS::stepAIC(
    modele_nul,
    scope = list(upper = modele_complet, lower = modele_nul),
    trace = 0,
@@ -388,6 +388,18 @@ rsq::rsq(sick_stepwise, adj=T)
 #' aboutissent au même modèle.
 sick_model <- sick_backward
 
+#--- Méthode all ---
+library(glmbb)
+clev_tous <- glmbb(Y~ age + sex + cp + trestbps + chol + 
+                      fbs + restecg + thalach + exang + oldpeak +ca*thal+slope*cp +
+                      slope + ca + thal ,Y~1,criterion="AIC",
+                   cutoff=3,
+                   family=binomial(link=logit),data = data)
+summary(clev_tous)
+model_final <-  glm(Y ~ sex + cp + trestbps + thalach + oldpeak + slope + ca*thal ,
+                    family=binomial(link=logit),data = data, x = TRUE, y = TRUE)
+summary(model_final )
+rsq::rsq(model_final , adj=T)
 
 # Ajout d'interactions ---------------------------------------------------------
 #' Approche stepwise avec seuil d'inclusion à 5% et seuil d'exclusion à 1% pour 
@@ -418,7 +430,9 @@ sick_model %>% rsq::rsq(adj=T) # 0.5875979
 # Réponse à la question 2 ------------------------------------------------------
 sick_model %>% anova()
 sick_model %>% coef()
-
+model_final %>% anova()
+summary(sick_model)
+summary(model_final)
 #============================= Question 3 ======================================
 rm(list=ls())
 
@@ -533,7 +547,6 @@ freq_stepwise$anova
 freq_stepwise %>% drop1(test="LRT")
 freq_stepwise %>% rsq::rsq(adj=T)
 #' Idem
-
 
 AIC(freq_forward, freq_backward, freq_stepwise)
 #' On trouve que les trois algorithmes de sélection de variables 

@@ -258,7 +258,55 @@ Après avoir réalisé ces étapes, il faut recommencer itérativement ce proces
 	Avec la fonction \texttt{predict} du \textit{package} \texttt{stats}, on obtient un estimé de $\hat{B} = 999.4799$ ainsi qu'un intervalle de prédiction correspondant à  $B \in [936.0751, 1062.885]$.
 	
 \section{Question 2}
- 
+	Pour la deuxième question de ce travail, on présente une base de donnée avec 13 variables explicatives qui mesure des métriques médicales du corps humain. L'objectif est de construire un modèle de régression qui estime la probabilité de diagnostic de maladie coronarienne positif. Ainsi, on veut identifier lesquelles des métriques médicales sont associes a une hausse du risque d,un diagnostic positif de la maladie coronarienne.
+	
+	\subsection{Analyse préliminaire}
+	
+	Afin d atteindre l'objectif de cette question, on commence par faire une analyse des variables explicatives. 
+	
+	Premièrement, on observe des "?" dans les donnees indiquant des valeurs manquantes. On décide d'écarter les 6 observations avec des valeurs manquantes, car ils ne sont pas nombreux.
+	
+	Deuxièmement, on trace des graphiques de boites a moustache pour les variables explicatives continues. On analysant les illustrations \ref{Q2_transformations_1} et \ref{Q2_transformations_2}, on n'identifie pas une variable explicative dominante et aucune transformation semble utile. On observes les moyennes différentes entre des cas la maladie coronarienne  positive ou négative. Certaines variables sembles avoir du pouvoir discriminant, mais il est difficile de tirée des conclusions claires, surtout avec la volatilité observe. On procède avec une analyse plus rigoureuse. 
+	
+	\subsection{Traitement de la multicollinéarité}
+	
+	Comme pour la question 1, on commence par identifier de la multicollinéarité dans les données. Puisque on s'intéresse seulement a des dépendances entre les variables explicatives, on peut utiliser un modèle linéaire standard avec toutes les 13 variables et calculer les VIFs pour chaque variable explicative. On observe aucune valeur de VIF supérieur a 10 et donc la multicollinéarité ne pose pas de problème pour cette question.
+	
+
+
+	\subsection{Sélection des variables explicatives}
+	L'objectif est de construire un model predictive. On cherche a prédire une probabilité de se trouve dans la classe 1, "diagnostic de maladie coronarienne positif". Une telle probabilité  peut être modélisé avec la loi binomial. Le modèle choisit est donc un GLM avec la loi binomiale et la fonction de lien \texttt{logit}. 
+	Afin de trouver les variables explicatives les plus pertinents, on choisit des approches itératives. La fonction R \texttt{stepAIC} du package \texttt{MASS} permet de itérativement sélectionner une variables, selon le critère AIC. On ajoute donc la variable, si elle réduit le AIC. On essaie trois méthode different: \texttt{"backward"},\texttt{"forward"} et \texttt{"both"}. La méthode \texttt{"backward"} part du modele complet avec 13 variables et retire a chaque itération la variable qui augmente le AIC le plus. La méthode \texttt{"forward"} part du modele nulle avec 0 variables et ajoute a chaque itération une variable. Elle choisit la variables qui a le plus petit AIC de toutes les sous-modele possible avec un variables de plus. La méthode \texttt{"both"} part du modele complet avec 13 variables et retire ou ajoute a chaque itération une variable qui diminue le AIC du nouveau sous-modèle. On obtient le meilleur \eqref{modele_back} AIC avec la méthode \texttt{"backward"}. 	
+	\begin{align}\label{modele_back}
+	\mathrm{Y} &\sim \mathrm{sex + cp + trestbps + thalach + exang + oldpeak + 
+		slope + ca + thal}
+	\end{align}
+	Les coefficients de pouls maximum atteint \texttt{thalach} et l'indicatrice indiquant la présence d’angine induite par l’exercice \texttt{exang} ne sont pas significative au seuil de 5\%. Alors, on continue avec des testes de ratio de vraisemblance au seuil 5\% en retirant \texttt{thalach} et \texttt{exang} individuellement. On décide que les deux variables n'ajoute pas assez de valeur, donc on les écartes du modèle. De plus, on teste des interactions. On identifie une interaction intéressante entre le nombre de vaissaux sanguins majeurs colorés par fluroscopie \texttt{ca} et \texttt{thal} qui est significative au seuil de 1\%. On obtient comme modèle final l'équation \eqref{modele_final_q2}.
+	\begin{align}\label{modele_final_q2}
+	\mathrm{Y} &\sim \mathrm{sex + cp + trestbps + oldpeak + slope + ca + 
+		thal + ca:thal}
+	\end{align}	
+	
+	On utilise aussi la fonction \texttt{"glmbb"} qui calcules toutes la sous-modèles possibles (en incluant des interactions).On choisit le modèle avec le AIC minimal et on obtient le modèle donnée par \eqref{modele_all}.
+	\begin{align}\label{modele_all}
+	\mathrm{Y} &\sim \mathrm{sex + cp + trestbps + thalach + oldpeak + slope + ca*thal}
+	\end{align}
+	On remarque que la seule différence est la variable \texttt{thalach} qu'on a écartée auparavant au seuil de 5\% avec le teste de ratio de vraisemblance. On garde donc le modèle \eqref{modele_final_q2} comme modèle finale. 
+	
+	\subsection{Facteur explicatives du modèle}
+	Afin de répondre a la question on analyse la sortie du modèle final \ref{model_final_q2_oouptut}.
+	\begin{figure}[H]
+		\includegraphics[width=\textwidth]{graphiques/modele_final_q2}
+		\caption{Output R modèle finale Q2}
+		\label{model_final_q2_oouptut}
+	\end{figure}
+	Selon notre modèle, les variables suivantes on tous une association positive avec un diagnostic positif de la maladie coronarienne: le sexe \texttt{sex}, la nature des douleurs a la poitrine \texttt{cp}, la tension artérielle au repos \texttt{trestbps}, la baisse dans ST lors de l exercice maximal \texttt{oldpeak} et la pente du segment de ST lors de l’exercice maximal \texttt{slope}. Toutes les coefficients sont supérieurs a $0$. Pour les variables explicatives \texttt{ca} et \texttt{thal}, la réponse est moins claire. Il y a des valeurs postivies et negatives pour les coefficient. Pour le le nombre de vaissaux sanguins majeurs colorés par fluroscopie \texttt{ca}, association pour une unitee positive de \texttt{ca} est donnée par l équation 
+	\begin{align}\label{eq_ca}
+	1.48959 + 17.14674 \times \texttt{thal3} -0.88747 \times \texttt{thal4}
+	\end{align}
+	qui est donc toujours positive car $\texttt{thal3} \geq 0$ et $\texttt{thal3} \geq 0$. Pour \texttt{thal}, la relation n'est pas toujours positive. 
+\section{Question 3}
+	
 	\appendix
 	\section{Illustrations}
 	\begin{figure}[H]
@@ -285,6 +333,20 @@ Après avoir réalisé ces étapes, il faut recommencer itérativement ce proces
 		\includegraphics[width=\textwidth]{graphiques/Qst1_transformations_5}
 		\caption{À gauche, on compare la variable endogène B avec les variables exogènes A13 à A15. Au centre, on compare la même relation, mais avec une transformation logarithmique effectuée sur les variables exogènes. À droite, c'est la transformation racine carrée qui est appliquée.}
 		\label{Qst1_transformations_5}
+	\end{figure}
+
+	\begin{figure}[H]
+		\includegraphics[width=\textwidth]{graphiques/Q2_transformation_1}
+		\caption{Boites a moustache entre la variables explicative et la variable dépendante Y.
+		À gauche, on compare la variable endogène Y avec les variables exogènes. Au centre, on compare la même relation, mais avec une transformation logarithmique effectuée sur les variables exogènes. À droite, c'est la transformation racine carrée qui est appliquée.}
+		\label{Q2_transformations_1}
+	\end{figure}
+
+	\begin{figure}[H]
+		\includegraphics[width=\textwidth]{graphiques/Q2_transformation_2}
+		\caption{Boites a moustache entre la variables explicative et la variable dépendante Y.
+			À gauche, on compare la variable endogène Y avec les variables exogènes. Au centre, on compare la même relation, mais avec une transformation logarithmique effectuée sur les variables exogènes. À droite, c'est la transformation racine carrée qui est appliquée.}
+		\label{Q2_transformations_2}
 	\end{figure}
 	
 	\clearpage
