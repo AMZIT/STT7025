@@ -548,19 +548,24 @@ freq_stepwise$anova
 freq_stepwise %>% drop1(test="LRT")
 freq_stepwise %>% rsq::rsq(adj=T)
 #' Idem
+#' 
+freq_stepwise%>% add1(.~. + VehValue , test = "LRT")
+
+
 #--- Méthode all ---
-library(glmbb)
-cas_tous <- glmbb(ClaimNb ~ VehValue + VehAge+VehBody+ 
-                     Gender+DrivAge + Exposure,
-                  ClaimNb ~ 1,
-                  criterion="AIC",
-                  cutoff=3,
-                  family=poisson(link = "log"),data = data)
-summary(cas_tous)
-model_final <-  glm(Y ~ sex + cp + trestbps + thalach + oldpeak + slope + ca*thal ,
-                    family=binomial(link=logit),data = data, x = TRUE, y = TRUE)
-summary(model_final )
-rsq::rsq(model_final , adj=T)
+# library(glmbb)
+# cas_tous <- glmbb(ClaimNb ~ VehValue + VehAge+VehBody+ 
+#                      Gender+DrivAge + Exposure + VehValue * VehAge + VehBody* VehValue + Gender * DrivAge +DrivAge * VehValue,
+#                   ClaimNb ~ 1,
+#                   criterion="AIC",
+#                   cutoff=3,
+#                   family=poisson(link = "log"),data = data)
+# summary(cas_tous)
+# model_final <-  glm(ClaimNb ~ VehBody + DrivAge + offset(log(Exposure)) + VehValue*VehAge  ,
+#                     family=poisson(link = "log"),data = data, x = TRUE, y = TRUE)
+# summary(model_final)
+# summary(freq_forward)
+# rsq::rsq(model_final , adj=T)
 
 AIC(freq_forward, freq_backward, freq_stepwise)
 #' On trouve que les trois algorithmes de sélection de variables 
@@ -577,6 +582,8 @@ freq_model %>% add1(.~. +.^2 , test = "LRT")
 freq_model %>% anova()
 freq_model %>% coef()
 
+
+   
 # --- Autre approche: régression régularisée (LASSO) ---
 # modele_glmnet_lasso <- glmnet(model$x[,-1], model$y ,
 #                                  family = poisson(link = "log"), alpha=1)
