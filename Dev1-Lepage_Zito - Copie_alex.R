@@ -14,7 +14,7 @@ library(olsrr)
 library(glmnet)
 library(plotmo)
 library(CASdatasets)
-
+library(gam)
 current_path = rstudioapi::getActiveDocumentContext()$path
 setwd(dirname(current_path))
 
@@ -468,7 +468,8 @@ modele.GAM <- gam::gam(ClaimNb ~ VehValue + offset(log(Exposure)),
 plot(modele.GAM) 
 #' Aucune transformation nécessaire.
 
-
+summary(data$ClaimNb)
+var(data$ClaimNb)
 # Analyse de la surdispersion --------------------------------------------------
 # Modèle de Poisson
 modele_Poisson <-  glm(ClaimNb ~ .-Exposure, offset = log(Exposure),
@@ -547,6 +548,19 @@ freq_stepwise$anova
 freq_stepwise %>% drop1(test="LRT")
 freq_stepwise %>% rsq::rsq(adj=T)
 #' Idem
+#--- Méthode all ---
+library(glmbb)
+cas_tous <- glmbb(ClaimNb ~ VehValue + VehAge+VehBody+ 
+                     Gender+DrivAge + Exposure,
+                  ClaimNb ~ 1,
+                  criterion="AIC",
+                  cutoff=3,
+                  family=poisson(link = "log"),data = data)
+summary(cas_tous)
+model_final <-  glm(Y ~ sex + cp + trestbps + thalach + oldpeak + slope + ca*thal ,
+                    family=binomial(link=logit),data = data, x = TRUE, y = TRUE)
+summary(model_final )
+rsq::rsq(model_final , adj=T)
 
 AIC(freq_forward, freq_backward, freq_stepwise)
 #' On trouve que les trois algorithmes de sélection de variables 
@@ -563,3 +577,20 @@ freq_model %>% add1(.~. +.^2 , test = "LRT")
 freq_model %>% anova()
 freq_model %>% coef()
 
+# --- Autre approche: régression régularisée (LASSO) ---
+# modele_glmnet_lasso <- glmnet(model$x[,-1], model$y ,
+#                                  family = poisson(link = "log"), alpha=1)
+# 
+# plot_glmnet(modele_glmnet_lasso)
+# 
+# set.seed(2020)
+# model <- lm(ClaimNb ~ .-Exposure, offset = log(Exposure),data = data, x=TRUE, y=TRUE)
+# cv_out <- cv.glmnet(model$x[,-1], model$y ,
+#                     family = poisson(link = "log"), alpha=1)
+# plot(cv_out)
+# 
+# coefs <- coef(modele_glmnet_lasso, s = c(cv_out$lambda.min,
+#                                          cv_out$lambda.1se))
+# colnames(coefs) <- c("lambda.min", "lambda.1se")
+# coefs
+# predictors <- rownames(coefs)[which(coefs[, 1] != 0)][-1]

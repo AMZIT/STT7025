@@ -274,7 +274,7 @@ Après avoir réalisé ces étapes, il faut recommencer itérativement ce proces
 	
 
 
-	\subsection{Sélection des variables explicatives}
+	\subsection{Sélection des variables explicatives}\label{q2_select}
 	L'objectif est de construire un model predictive. On cherche a prédire une probabilité de se trouve dans la classe 1, "diagnostic de maladie coronarienne positif". Une telle probabilité  peut être modélisé avec la loi binomial. Le modèle choisit est donc un GLM avec la loi binomiale et la fonction de lien \texttt{logit}. 
 	Afin de trouver les variables explicatives les plus pertinents, on choisit des approches itératives. La fonction R \texttt{stepAIC} du package \texttt{MASS} permet de itérativement sélectionner une variables, selon le critère AIC. On ajoute donc la variable, si elle réduit le AIC. On essaie trois méthode different: \texttt{"backward"},\texttt{"forward"} et \texttt{"both"}. La méthode \texttt{"backward"} part du modele complet avec 13 variables et retire a chaque itération la variable qui augmente le AIC le plus. La méthode \texttt{"forward"} part du modele nulle avec 0 variables et ajoute a chaque itération une variable. Elle choisit la variables qui a le plus petit AIC de toutes les sous-modele possible avec un variables de plus. La méthode \texttt{"both"} part du modele complet avec 13 variables et retire ou ajoute a chaque itération une variable qui diminue le AIC du nouveau sous-modèle. On obtient le meilleur \eqref{modele_back} AIC avec la méthode \texttt{"backward"}. 	
 	\begin{align}\label{modele_back}
@@ -306,6 +306,28 @@ Après avoir réalisé ces étapes, il faut recommencer itérativement ce proces
 	\end{align}
 	qui est donc toujours positive car $\texttt{thal3} \geq 0$ et $\texttt{thal3} \geq 0$. Pour \texttt{thal}, la relation n'est pas toujours positive. 
 \section{Question 3}
+	Cette question utilise les donnes d'assurance automobile australienne qui contient les valeurs de 3 caractéristiques du véhicule et 2 caractéristiques de l'assuré. L'objectif est de construire un modèle sur le nombre de réclamation par police. Plus précisément, on veut identifier lesquelles variables explicatives sont associée avec le nombre de réclamation. Puisqu’on cherche de modéliser un dénombrement, on modélise le nombre de réclamation avec une loi Poisson ou Binomial Négative. La fonction de lien pour le GLM est le logarithme. De plus, on applique un offset sur la variables \texttt{Exposure}, car elle est proportionnel au nombre de risque
+	
+	\subsection{Traitement de la multicollinéarité}
+	On commence par une analyse sur la multicollinéarité. Puisqu'on a principalement des variables catégorielles, il faut utiliser le VIF agrégée. La fonction \texttt{vif} du package \texttt{car} nous permet de calculer le VIF agrégée. Finalement, on n'observe aucune valeur supérieur a 10, donc la multicollinéarité n'est pas un problème. 
+	
+	\subsection{Traitement de la surdispersion}
+	
+	On sait que la loi Poisson a une espérance égal a sa variance. Si on calcule la moyenne et la variance empirique du nombre de réclamation, on obtient $0.07276$ et $0.07739737$ respectivement. Sachant que la nombre de réclamation dominant la base de donnée est égal a 0, on peut conclure en premier vue que la variance et la moyenne ne sont pas égal. Il est donc probable que la loi Binomiale Négative est plus appropriée. La valeur phi du modèle complet avec la loi Poisson est de $0.373606$. La valeur devrait être proche de 1 pour la loi Poisson, c est donc un autre indice de sous-dispersion. 
+	Afin de choisir définitivement en la loi appropriée, on fait un test du ratio de vraisemblance. L'hypothèse nulle est le modèle complet GLM avec la loi Poisson. La contre-hypothèse est le modèle complet GLM avec la loi Binomiale Négative. La valeur p de la statistique est proche de 0, on rejette l'hypothèse nulle. La vraisemblance est donc significativement meilleur pour la loi Binomiale Négative. Utiliser l'AIC ou le BIC comme critère donne la même conclusion. 
+	
+	\subsection{Sélection des variables explicatives}
+	
+	Comme pour la question 2, section \ref{q2_select}, on utilise la fonction R \texttt{stepAIC} et les trois approches différents pour trouver le meilleur sous-modèle. Les trois approches donne le meme sous-modèle \eqref{modele_both_q3}.
+	\begin{align}\label{modele_both_q3}
+	\mathrm{ClaimNb} &\sim \mathrm{DrivAge + VehAge + VehBody + offset(log(Exposure))
+	}
+	\end{align}	
+ 
+	On a donc trois variables explicatives qui sont associées au nombre de réclamation.
+	
+	\subsection{Association avec la valeur relative du véhicule}
+	Le modèle finale n'inclue pas la valeur relative du véhicule. Avec un teste de ratio de vraisemblance, la variable de valeur relative du véhicule n'ajoute pas assez de valeur et est donc écarté du modèle.
 	
 	\appendix
 	\section{Illustrations}
