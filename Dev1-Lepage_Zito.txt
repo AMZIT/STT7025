@@ -14,7 +14,8 @@ library(olsrr)
 library(glmnet)
 library(plotmo)
 library(CASdatasets)
-library(dplyr)
+library(gam)
+library(rsq)
 
 current_path = rstudioapi::getActiveDocumentContext()$path
 setwd(dirname(current_path))
@@ -44,229 +45,201 @@ data %>% glimpse()
 data %>% summary()
 
 
-modele_complet <-  lm(B~., data=data, x=TRUE, y=TRUE)
+# Analyse préliminaire
+par(mfrow=c(3,3))
+for (l in colnames(data[-16])) {
+   plot(data[,l], data$B, xlab=l, ylab="B")
+   plot(I(log(data[,l])), data$B, xlab=l, ylab="B")
+   plot(I(sqrt(data[,l])), data$B, xlab=l, ylab="B")
+}
+par(mfrow=c(1,1))
+#' Il semblerait que les variables A12, A13 et A14 gagneraient à recevoir une 
+#' transformation logarithmique afin d'améliorer la relation linéaire les 
+#' unissant à la variable B
+
+f <- as.formula('B~. -A12 -A13 - A14 + I(log(A12)) + I(log(A13)) +
+                I(sqrt(A14))')
+modele_complet <-  lm(f, data=data, x=TRUE, y=TRUE)
+AIC(modele_complet)
+
+f <- as.formula('B~.-A9 -A12 -A13 - A14 + I(log(A12)) + I(log(A13)) +
+                I(sqrt(A14)) + I(sqrt(A9))')
+modele_complet <-  lm(f, data=data, x=TRUE, y=TRUE)
+AIC(modele_complet)
+
+f <- as.formula('B~.-A9 -A12 -A13 - A14 + I(log(A12)) + I(log(A13)) +
+                I(log(A14)) + I(sqrt(A9))')
+modele_complet <-  lm(f, data=data, x=TRUE, y=TRUE)
+AIC(modele_complet)
+
+f <- as.formula('B~.-A9 -A12 -A13 - A14 + I(log(A12)) + I(log(A13)) +
+                I(sqrt(A14)) + I(log(A9))')
+modele_complet <-  lm(f, data=data, x=TRUE, y=TRUE)
+AIC(modele_complet)
+
+f <- as.formula('B~.-A9 -A12 -A13 - A14 + I(log(A12)) + I(log(A13)) +
+                I(log(A14)) + I(log(A9))')
+modele_complet <-  lm(f, data=data, x=TRUE, y=TRUE)
+AIC(modele_complet)
+
+# Meilleur modèle:
+f <- as.formula('B~.-A9 -A12 -A13 - A14 + I(log(A12)) + I(log(A13)) +
+                I(log(A14)) + I(sqrt(A9))')
+modele_complet <-  lm(f, data=data, x=TRUE, y=TRUE)
 
 
 # Analyse de la multicolinéarité -----------------------------------------------
 ols_vif_tol(modele_complet)
-#' Il y a une sérieuse présence de multicolinéarité
+#' Il y a présence de multicolinéarité
 
 
-multicol_diagnosis <- function(modele, tol=0.6, verbose=TRUE){
-   #' Fonction qui cible les variables redondantes dans un modèle linéaire
-   #' en évaluant les proportions de variabilité (p_lj) en présence de 
-   #' multicolinéarité..
-   #' 
-   #' Variables:
-   #' @param modele Le modèle linéaire sur lequel on veut procéder au diagnostique;
-   #' @param tol Seuil sur lequel on base le rejet d'une variable exogène;
-   #' @param verbose Afficher les informations pertinentes.
-   diagnosis <- ols_coll_diag(modele)$eig_cindex %>% as_tibble() %>%
-      select('Condition Index', starts_with('A')) %>%
-      arrange(desc(`Condition Index`)) %>%
-      filter(`Condition Index`>30) %>% 
-      pivot_longer(starts_with("A"), values_to = 'P_lj') %>% 
-      filter(P_lj>=tol)
+multicol_diagnosis <- function(modele, TOL=0.5, TeX_table=FALSE) {
+   #' Fonction qui cible les variables problématiques
+   #' @param modele Un modèle linéaire sur lequel diagnostiquer le problème
+   #' de multicolinéarité;
+   #' @param TOL Seuil de tolérance pour déterminer que la proportion de 
+   #' variance soulève un problème de multicolinéarité;
+   #' @param TeX_table Variable booléenne. Si TRUE, affiche un tableau synthèse
+   #' en format LaTeX.
+   multicol_diagnosis <- ols_eigen_cindex(modele)
+   eigen_index <- rownames(multicol_diagnosis)
+   multicol_diagnosis <- 
+      multicol_diagnosis %>%  
+      mutate(j = eigen_index, .after=1) %>%
+      select(-Eigenvalue, -intercept) %>%
+      top_n(2, `Condition Index`) %>%
+      pivot_longer(-c(1,2), values_to='p_lj') %>%
+      filter(p_lj>=TOL)
    
-   if (verbose){
-      print(diagnosis)
-   }
-   return(diagnosis[1,2])
+   if (TeX_table)
+      multicol_diagnosis %>% xtable::xtable() %>% print(include.rownames=FALSE)
+   return(multicol_diagnosis)
 }
 
 
-retirer_variables_redondantes <- function(modele, tol=0.6, verbose=TRUE) {
-   #' Fonction qui itère sur la fonction @multicol_diagnosis tant et aussi 
-   #' longtemps que le problème de multicolinéarité n'est pas réglé (VIF>10).
-   #' 
-   #' Variables:
-   #' @param modele Le modèle linéaire sur lequel on veut procéder au diagnostique;
-   #' @param tol Seuil sur lequel on base le rejet d'une variable exogène;
-   #' @param verbose Afficher les informations pertinentes.
-   vif_max <-  ols_vif_tol(modele) %>% select(VIF) %>% max()
-   modele_complet2 <- modele
-   while (vif_max>10) 
-      {
-      if (verbose) print(paste("VIF max:", round(vif_max)), quote=F)
-      
-      variable_redondante <- multicol_diagnosis(modele_complet2, tol, verbose)
-      
-      if (is.null(variable_redondante))
-      {
-         message(
-            "Le paramètre tol est trop élevé et ne permet pas de régler
-              le problème de multicolinéarité.")
-      }
-      else
-      {
-         f <- as.formula(paste(".~. -", paste(variable_redondante)))
-         modele_complet2 <-  update(modele_complet2, f)
-      }
-      
-      vif_max <- ols_vif_tol(modele_complet2) %>% select(VIF) %>% max()
-   }
-   if (verbose) print(paste("VIF max:", round(vif_max,2)), quote=F)
-   return(modele_complet2)
-}
+multicol_diagnosis(modele_complet)
+modele_complet2 <- update(modele_complet, .~.-A5)
+ols_vif_tol(modele_complet2) %>% top_n(1, VIF)
 
+multicol_diagnosis(modele_complet2)
+modele_complet2 <- update(modele_complet2, .~.-A3)
+ols_vif_tol(modele_complet2) %>% top_n(1, VIF)
 
-modele_complet2 <- retirer_variables_redondantes(modele_complet, 0.6)
+multicol_diagnosis(modele_complet2)
+modele_complet2 <- update(modele_complet2, .~.- A7)
+ols_vif_tol(modele_complet2) %>% top_n(1, VIF)
+
+multicol_diagnosis(modele_complet2)
+modele_complet2 <- update(modele_complet2, .~.- A6)
+ols_vif_tol(modele_complet2) %>% top_n(1, VIF)
+
+multicol_diagnosis(modele_complet2)
+modele_complet2 <- 
+   update(modele_complet2, .~.- A4 - I(sqrt(A9)) + I(A4 + sqrt(A9)))
+ols_vif_tol(modele_complet2) %>% top_n(1, VIF)
+
+multicol_diagnosis(modele_complet2)
+modele_complet2 <- update(modele_complet2, .~.- I(A4 + sqrt(A9)))
+ols_vif_tol(modele_complet2) %>% top_n(1, VIF)
+
+multicol_diagnosis(modele_complet2)
+modele_complet2 <- update(modele_complet2, .~.-A10 -A15 + I((A10 + A15)/2))
+ols_vif_tol(modele_complet2) %>% top_n(1, VIF)
+
+multicol_diagnosis(modele_complet2)
+modele_complet2 <- update(modele_complet2, .~.- I((A10 + A15)/2))
+ols_vif_tol(modele_complet2) %>% top_n(1, VIF)
+
+multicol_diagnosis(modele_complet2)
+modele_complet2 <- 
+   update(modele_complet2, .~.-I(log(A12)) -I(log(A13)) + I(log(sqrt(A12*A13))))
+ols_vif_tol(modele_complet2) %>% top_n(1, VIF)
 #' Le problème de multicolinéarité est maintenant réglé.
-modele_complet2 %>% summary()
+drop1(modele_complet2)
 
-modele_complet3 <-  lm(B~ A1 + A2 + A8 + A9 + A10 + A11 + A13 + A14 + A15, data=data, x=TRUE, y=TRUE)
-summary(modele_complet3)
-ols_regress(modele_complet3)
 
 # --- Autre approche: régression régularisée (LASSO) ---
+set.seed(2020)
 modele_glmnet_lasso <- glmnet(modele_complet$x[,-1], modele_complet$y, 
                               family='gaussian', alpha=1)
-modele_glmnet_ridge <- glmnet(modele_complet$x[,-1], modele_complet$y, 
-                              family='gaussian', alpha=0)
+#' On va prendre la valeur de lambda qui conserve le plus de variables 
+#' explicatives possibles et qui minimise la statistique de déviance.
 
-plot_glmnet(modele_glmnet_lasso)
 
-set.seed(2020)
-cv_out <- cv.glmnet(modele_complet$x[,-1], modele_complet$y, 
-                    family='gaussian', alpha=1)
-plot(cv_out)
-
-coefs <- coef(modele_glmnet_lasso, s = c(cv_out$lambda.min,
-                                         cv_out$lambda.1se))
-colnames(coefs) <- c("lambda.min", "lambda.1se")
-coefs
-predictors <- rownames(coefs)[which(coefs[, 1] != 0)][-1]
-#' Variables à conserver : A1, A2, A6, A7, A8, A9 et A14
-
-f <- as.formula(paste('B~', paste(predictors, collapse ='+')))
-modele_complet2 <- lm(f, data=data)
-summary(modele_complet2)
-ols_vif_tol(modele_complet2)
-#' La multicolinéarité a été réglée.
-#' 
-# --- Autre approche: régression régularisée (elastic net) ---
-modele_glmnet <- list()
-
-df_log <- data  %>% mutate(A9 = log(A9),
-                       A13 = log(A13),
-                       A14 = log(A14))
-modele_complet <-  lm(B~., data=df_log, x=TRUE, y=TRUE)
-
-vec_alpha <- seq(0,1,0.025)
-model_sortie_elasticNet <- list()
-r_adj_elasticNet <- rep(0,length(vec_alpha))
-predictors_elasticNet <- list()
-for (alp in vec_alpha) {
-   modele_glmnet[[as.character(alp)]]<- glmnet(modele_complet$x[,-1], modele_complet$y, 
-                                               family='gaussian', alpha=alp)
+tester_lambda <- function(modele, df, return_model=FALSE) {
+   #' Fonction qui extrait la valeur de lambda minimisant la déviance pour un 
+   #' nombre de degrés de liberté donné. Par la suite, elle présente le 
+   #' VIF maximal afin de valider que la régression régularisée a permis de 
+   #' traiter la multicollinéarité.
+   #' @param modele Modèle glm.net sur lequel on cherche à régler un problème de
+   #' multicollinéarité;
+   #' @param df Nombre de degrés de libertés utilisé pour sélectionner le 
+   #' meilleur lambda;
+   #' @param return_model Variable booléenne. Si TRUE, retourne le modèle testé.
+   lambda <- modele$lambda[which(modele$df==df)]
+   dev_ratio <- modele$dev.ratio[which(modele$df==df)]
    
-   cv_out <- cv.glmnet(modele_complet$x[,-1], modele_complet$y, 
-                       family='gaussian', alpha=alp)
+   meilleur_lambda <- lambda[which.min(dev_ratio)]
+   coefs <- coef(modele, s = meilleur_lambda)
    
-   coefs <- coef(modele_glmnet[[as.character(alp)]], s = c(cv_out$lambda.min,
-                                                           cv_out$lambda.1se))
-   colnames(coefs) <- c("lambda.min", "lambda.1se")
-   predictors <- rownames(coefs)[which(coefs[, 1] != 0)][-1]
-   predictors_elasticNet[[as.character(alp)]] <- predictors
+   predictors <- rownames(coefs)[which(coefs != 0)][-1]
    f <- as.formula(paste('B~', paste(predictors, collapse ='+')))
-   model_sortie_elasticNet[[as.character(alp)]] <- lm(f, data=df_log)
-   r_adj_elasticNet[which(vec_alpha == alp)] <- ols_regress(model_sortie_elasticNet[[as.character(alp)]])$prsq
-}
-plot(vec_alpha,r_adj_elasticNet)
-#R-carre adj maximum atteint avec elastic net
-max(r_adj_elasticNet)
-vec_alpha[which(r_adj_elasticNet == max(r_adj_elasticNet))]
-for ( alp in vec_alpha[which(r_adj_elasticNet == max(r_adj_elasticNet))]) {
-   print(predictors_elasticNet[[as.character(alp)]])
+   modele_LASSO <- lm(f, data=data)
+   
+   print(paste("Valeur de lambda =", meilleur_lambda))
+   print(ols_vif_tol(modele_LASSO) %>% top_n(1, VIF))
+   if(return_model) return(modele_LASSO)
 }
 
-ols_vif_tol(model_sortie_elasticNet[[as.character(0.75)]])
-ols_vif_tol(modele_complet)
-ols_regress(model_sortie_elasticNet[[as.character(0.75)]])
 
+tester_lambda(modele_glmnet_lasso, df=15)
+tester_lambda(modele_glmnet_lasso, df=14)
+tester_lambda(modele_glmnet_lasso, df=13)
+tester_lambda(modele_glmnet_lasso, df=11)
+tester_lambda(modele_glmnet_lasso, df=9)
+tester_lambda(modele_glmnet_lasso, df=8)
+#' On règle le problème de multicolinéarité lorsque le nombre maximal de 
+#' variables explicatives est de 8.
+modele_filtre_Lasso <- tester_lambda(modele_glmnet_lasso, df=8, return_model=T)
 
-summary(modele_complet2)
-ols_vif_tol(modele_complet2)
-df_log %>% pairs()
-
-#' L'approche itérative en utilisant les proportions de variation ne donne pas
-#' les mêmes résultats que celle utilisant la régression régularisée.
-#' Il reste à voir selon l'AIC laquelle des deux approches offre le meilleur 
-#' pouvoir prédictif.
-
-
-# Transformations ? ------------------------------------------------------------
-car::boxCox(modele_complet2)
-#' Aucune transformation nécessaire.
+AIC(modele_complet2, modele_filtre_Lasso)
+ols_regress(modele_complet2)$prsq
+ols_regress(modele_filtre_Lasso)$prsq
+#' Le modèle utilisant la régression LASSO est plus performant selon l'AIC et le
+#' R-carré de prédiction.
 
 
 # Sélection de variables -------------------------------------------------------
-# --- Approche de Hosmer et Lemeshow ---
-
 # --- Test de tous les sous-modèles possibles ---
-all_possible <- ols_step_all_possible(modele_complet2)
+all_possible <- ols_step_all_possible(modele_filtre_Lasso)
 plot(all_possible)
-(bests_models <- all_possible %>% as_tibble() %>% top_n(3, predrsq))
-
-#' Deux modèles se démarquent du lot. Le plus simple des deux (Index 256) 
-#' est celui qui minimise le R-carré de PRESS. Comme l'objectif de cette
-#' question est de faire de la prédiction, on favorisera ce critère par rapport
-#' aux autres.
-predictors <- str_split(bests_models[1, 3], ' ') %>% unlist()
-f <- as.formula(paste("B~", paste(predictors, collapse = '+')))
-mortality_model <- lm(f, data=data)
+(best_models <- all_possible %>% as_tibble() %>% top_n(3, predrsq))
+#' Deux modèles se démarquent du lot. Le plus simple des deux (Index 382) 
+#' est celui qui minimise . Comme l'objectif de cette
+#' question est de faire de la prédiction, on favorisera le R-carré de PRESS
+#' par rapport aux autres critères.
+best_models[1,3]
+mortality_model <- lm(B ~ A1 +A2 +A6 +A8 +I(log(A13)) +I(sqrt(A9)), data = data)
 ols_regress(mortality_model)
-#' Comparaison de l'AIC selon la méthode de traitement de la multicolinéarité:
-# AIC(mortality_model)
-#' Méthode itérative: AIC: 603.0711,    Pred R-Squared 0.640
-#' Régression LASSO : AIC: 598.7574,    Pred R-Squared 0.665
-#' 
-#' Verdict: Pour traiter la multicolinéarité, la régression LASSO permet de
-#' conserver un meilleur pouvoir prédictif.
-#' 
-## avec transformation log ##
-all_possible <- ols_step_all_possible(modele_complet)
-(bests_models <- all_possible %>% as_tibble() %>% top_n(3, predrsq))
-(bests_models <- all_possible %>% as_tibble() %>% top_n(-3, aic))
-(bests_models <- all_possible %>% as_tibble() %>% top_n(-3, sbic))
-#' On choisit le meilleur PRESS qu on peut obtenir est un model ou on risque avoir un petit overfit, 
-#' car l ecart entre le rsuqre et predrsq est assez important. On cherche donc un modele moins complex
-#' On regard alors avec le AIC ou le BIC. On choisit le model avec l index 9949 car il a le meilleur BIC, 
-#' un tres bon AIC et une predrsq legerement moins bon de 0.69.
-predictors <- str_split(bests_models[3, 3], ' ') %>% unlist()
-f <- as.formula(paste("B~", paste(predictors, collapse = '+')))
-mortality_model_log <- lm(f, data=df_log)
-ols_regress(mortality_model)
-ols_regress(mortality_model_log)
 
-#
+
 # Ajout d'interactions ---------------------------------------------------------
 add1(mortality_model, .~. +.^2 , test = "F")
-add1(mortality_model_log, .~. +.^2 , test = "F")
 #' Aucune interaction intéressante au seuil de 1% 
-f <- as.formula(paste("B~", paste(predictors, collapse = '+'),"+ A2*A4"))
-mortality_model_log_inter <- lm(f, data=df_log)
-ols_regress(mortality_model_log_inter)
+
+
 # Appréciation du modèle -------------------------------------------------------
 mortality_model %>% ols_regress()
-#' Le R-carré de prédiction est de 0.64; le pouvoir prédictif de ce modèle est
-#' donc très limité.
-ame_model <- lm(B~A1 + A2 + A3 + A6 + A8 + A9 + A14, data=data)
-anova(mortality_model, ame_model)
+#' Le R-carré de prédiction est de 0.715; le pouvoir prédictif de ce modèle est
+#' tout à fait adéquat considérant les données disponibles.
 
-ame_model <- lm(B ~ A1 + A2 + A4+ A6 + A7 + A8 + A9 + A13 + A2 * A4, data=df_log) # si on choisit le predrsq comme critaire principal
-anova( ame_model,mortality_model_log_inter)
 
-ols_regress(mortality_model_log)
-
-# Réponse à la question 1  ------------------------------------------------------------------
+# Réponse à la question 1  -----------------------------------------------------
 new_data <- read.table(text="40 30 80 9 3 10 77 4100 13 46 15 25 26 145 55") %>%
    as_tibble()
 colnames(new_data) <- colnames_[-16]
-new_data <- new_data %>% mutate(A9 = log(A9),
-                                A13 = log(A13),
-                                A14 = log(A14))
-predict.lm(mortality_model_log, newdata = new_data,
+
+predict.lm(mortality_model, newdata = new_data,
                type='response', interval = 'prediction')
 
 
@@ -297,17 +270,31 @@ names(data) <- c("age", "sex", "cp", "trestbps", "chol", "fbs", "restecg",
 data %>% glimpse()
 data %>% summary()
 data <- data %>% mutate(
-   sex = as.factor(sex),
-   cp = as.factor(cp),
-   fbs = as.factor(fbs),
-   restecg = as.factor(restecg),
-   exang = as.factor(exang),
-   slope = as.factor(slope),
+   sex = factor(sex),
+   cp = factor(cp),
+   fbs = factor(fbs),
+   restecg = factor(restecg),
+   exang = exang,
+   slope = factor(slope),
    ca = as.integer(na_if(ca, '?')),
-   thal = as.factor(as.integer(na_if(thal, '?'))),
-   Y = as.factor(1*(num>0)),
+   thal = factor(as.integer(na_if(thal, '?'))),
+   Y = 1*(num>0),
    num = NULL
 ) %>% drop_na()
+
+# Regrouper thal3 avec thal6
+data$thal[data$thal == 6] <- 3
+
+
+# Analyse préliminaire ---------------------------------------------------------
+variables_numeriques <- data %>% select(where(is.double), -Y) %>% colnames()
+par(mfrow=c(3,3))
+for (var_ in variables_numeriques) {
+   boxplot( as.formula(paste0(var_," ~ Y")), data = data)
+   boxplot( as.formula(paste0("I(log(",var_,"+1)) ~ Y")), data = data)
+   boxplot( as.formula(paste0("I(sqrt(",var_,"+1)) ~ Y")), data = data)
+}
+par(mfrow=c(1,1))
 
 
 # Analyse de la multicolinéarité -----------------------------------------------
@@ -315,8 +302,9 @@ data <- data %>% mutate(
 #' Comme on n'a pas besoin d'un modèle pour tester la multicolinéarité, on va
 #' se créer un modèle linéaire bidon qui permettra d'utiliser les outils du
 #' package olsrr.
-bidon <- lm(rnorm(nrow(data))~., data=data)
+bidon <- lm(rep(1, nrow(data)) ~., data=data)
 ols_vif_tol(bidon)
+car::vif(bidon)
 #' Il n'y a aucun signe de multicolinéarité.
 
 
@@ -331,13 +319,33 @@ modele_nul <- glm(Y ~ 1, family = binomial("logit"), data = data)
 modele_complet <-  glm(Y ~ ., data = data, family = binomial("logit"), x=T, y=T)
 
 # --- Test de tous les sous-modèles ---
-# f <- as.formula(paste("Y~", paste(colnames(data[,-14]), collapse = '+')))
-# sick_tout <- glmbb::glmbb(f,
-#                           family=binomial("logit"),
-#                           criterion='AIC',
-#                           data=data)
-#' La fonction glmbb du package du même nom, n'est pas fait pour gérer les 
-#' variables catégorielles. Il faut donc utiliser des méthodes alternatives.
+cut_off <- -diff(AIC(modele_nul, modele_complet)$AIC) / 1.1
+f <- as.formula(paste("Y~", paste(colnames(data[,-14]), collapse = '+')))
+sick_tout <- glmbb::glmbb(f,
+                          family=binomial("logit"),
+                          criterion='AIC',
+                          data=data, 
+                          cutoff=cut_off)
+sum_glmbb <- summary(sick_tout)
+best_glmbb <- sum_glmbb$results %>% as_tibble() %>% top_n(-5, criterion)
+best_glmbb
+#' On va tester les cinq meilleurs modèles selon le critère du R-carré ajusté.
+
+modeles_Qst2 <- matrix(nrow = 5, ncol=2)
+colnames(modeles_Qst2) <- c('formula', 'R2-ajusted')
+k <- 1
+for (f in best_glmbb$formula){
+   modele <- glm(f, family = binomial("logit"), data = data)
+   rsq(modele, adj=T)
+   modeles_Qst2[k,] <- cbind(modele$formula, rsq(modele, adj=T))
+   k <- k+1
+}
+modeles_Qst2 <- modeles_Qst2 %>% as_tibble() %>% top_n(1,`R2-ajusted`)
+sick_model <- glm(modeles_Qst2$formula, family = binomial("logit"), data = data)
+summary(sick_model)
+rsq(sick_model, adj=T)
+#' On va aussi essayer les méthodes algorithmiques
+
 
 # --- Méthode forward ---
 sick_forward <- MASS::stepAIC(
@@ -400,13 +408,13 @@ sick_stepwise %>% rsq::rsq(adj=T)
 #' k=4 -> Adj R-Squared = 0.5550493
 
 
-AIC(sick_forward, sick_backward, sick_stepwise)
+AIC(sick_model, sick_forward, sick_backward, sick_stepwise)
+rsq::rsq(sick_model, adj=T)
 rsq::rsq(sick_forward, adj=T)
 rsq::rsq(sick_backward, adj=T)
 rsq::rsq(sick_stepwise, adj=T)
-#' On trouve donc que les trois algorithmes de sélection de variables 
+#' On trouve donc que les 4 méthodes de sélection de variables 
 #' aboutissent au même modèle.
-sick_model <- sick_backward
 
 
 # Ajout d'interactions ---------------------------------------------------------
@@ -436,8 +444,9 @@ sick_model %>% rsq::rsq(adj=T) # 0.5875979
 
 
 # Réponse à la question 2 ------------------------------------------------------
-sick_model %>% anova()
+sick_model %>% summary()
 sick_model %>% coef()
+sick_model %>% car::vif()
 
 
 #============================= Question 3 ======================================
@@ -456,15 +465,16 @@ bidon <- lm(rnorm(nrow(data))~., data=data)
 ols_vif_tol(bidon)
 #' On voit que certaines valeurs de VIF sont plus grandes que 10. Cependant,
 #' celles-ci sont calculées sur toutes les variables catégorielles unitaires.
-#' On veut donc connaître le VIF agrégé. 
+#' On veut donc connaître le VIF agrégé (ou généralisé). 
 car::vif(bidon)
+#' Il n'y a aucun problème de multicolinéarité.
 
 
 # Transformations ? ------------------------------------------------------------
 modele.GAM <- gam::gam(ClaimNb ~ VehValue + offset(log(Exposure)),
                   data = data, family = poisson("log"))
 plot(modele.GAM) 
-#' Aucune transformation nécessaire.
+#' Aucune transformation nécessaire sur la variable VehValue.
 
 
 # Analyse de la surdispersion --------------------------------------------------
@@ -478,18 +488,14 @@ modele_Poisson %>% summary()
 # Modèle binomial négative
 modele_BinomNeg <- MASS::glm.nb(ClaimNb ~ .-Exposure + offset(log(Exposure)), 
                           data = data, link="log")
-lmtest::lrtest(modele_Poisson, modele_BinomNeg)
-
-
-AIC(modele_Poisson, modele_BinomNeg)
-BIC(modele_Poisson, modele_BinomNeg)
 
 l0 <- logLik(modele_Poisson)
 l1 <- logLik(modele_BinomNeg)
 0.5 *(1 - pchisq(2*(l1 - l0), 1)) %>% as.numeric()
 #' Avec un test du ratio de vraisemblance, on trouve que le modèle binomial 
 #' négative est significativement mieux ajusté aux données qu'un modèle 
-#' poissonien. Les statistiques de l'AIC et du BIC confirment ce constat.
+#' poissonien.
+
 
 # Sélection de variables -------------------------------------------------------
 modele_nul <- MASS::glm.nb(ClaimNb ~ 1 + offset(log(Exposure)), 
@@ -499,6 +505,19 @@ modele_complet <- modele_BinomNeg
 # --- Tester tous les sous-modèles ---
 # all_models <- glmulti::glmulti(modele_complet)
 #' Nécessite l'installation de JavaScript pour être utilisé...
+# cut_off <- -diff(AIC(modele_nul, modele_complet)$AIC) / 1.1
+# sick_tout <- glmbb::glmbb(
+#    ClaimNb ~ VehValue + VehAge + VehBody + Gender + DrivAge,
+#    family = quasipoisson("log"),
+#    criterion = 'AIC',
+#    data = data,
+#    cutoff = 10
+# )
+#' glmbb n'est pas fait pour gérer la famille binomiale négative
+#' et le modèle quasi-poissonien ne fonctionne pas pour une raison obscure.
+#' Pour ces raisons, on utilise l'approche algorithmique pour sélectionner les
+#' variables.
+
 
 # --- Méthode forward ---
 freq_forward <- MASS::stepAIC(
@@ -545,6 +564,7 @@ freq_stepwise$anova
 freq_stepwise %>% drop1(test="LRT")
 freq_stepwise %>% rsq::rsq(adj=T)
 #' Idem
+#' 
 
 
 AIC(freq_forward, freq_backward, freq_stepwise)
@@ -556,8 +576,40 @@ freq_model <- freq_forward
 # Ajout d'interactions ---------------------------------------------------------
 freq_model %>% add1(.~. +.^2 , test = "LRT")
 # Aucune interaction significative.
+freq_model %>% drop1(test = "LRT")
+# Toutes les variables du modèle sont significatives.
 
 
 # Réponse à la question 3 ------------------------------------------------------
-freq_model %>% anova()
-freq_model %>% coef()
+freq_model %>% summary()
+
+library(xtable)
+
+facteurs <- 
+   freq_model %>% coef() %>% exp() %>% as.tibble() %>%
+   mutate(Variable = names(freq_model$coefficients), .before=1) %>%
+   pivot_wider(Variable, Variable)
+
+facteurs %>% select(starts_with('DrivAge')) %>%
+   pivot_longer(starts_with('DrivAge'), 
+                names_to="Variable", 
+                values_to ="Coefficients") %>%
+   arrange(Coefficients) %>% xtable() %>% print(include.rownames=FALSE)
+data$DrivAge %>% unique() %>% as_tibble()
+
+facteurs %>% select(starts_with('VehBody')) %>%
+   pivot_longer(starts_with('VehBody'), 
+                names_to="Variable", 
+                values_to ="Coefficients") %>%
+   arrange(Coefficients) %>% xtable() %>% print(include.rownames=FALSE)
+data$VehBody %>% unique() %>% as_tibble()
+
+facteurs %>% select(starts_with('VehAge')) %>%
+   pivot_longer(starts_with('VehAge'), 
+                names_to="Variable", 
+                values_to ="Coefficients") %>%
+   arrange(Coefficients) %>% xtable() %>% print(include.rownames=FALSE)
+data$VehAge %>% unique() %>% as_tibble()
+
+
+freq_model %>% add1(.~. + VehValue , test = "LRT")

@@ -465,27 +465,18 @@ bidon <- lm(rnorm(nrow(data))~., data=data)
 ols_vif_tol(bidon)
 #' On voit que certaines valeurs de VIF sont plus grandes que 10. Cependant,
 #' celles-ci sont calculées sur toutes les variables catégorielles unitaires.
-#' On veut donc connaître le VIF agrégé. 
+#' On veut donc connaître le VIF agrégé (ou généralisé). 
 car::vif(bidon)
+#' Il n'y a aucun problème de multicolinéarité.
 
-# Analyse Preliminaire
-cc <- c("Exposure" ,"VehValue" )
-par(mfrow=c(2,3))
-for (l in cc) {
-   boxplot( as.formula(paste0(l," ~ ClaimNb")),data = data)
-   boxplot( as.formula(paste0("I(log(",l,")) ~ ClaimNb")),data = data)
-   boxplot( as.formula(paste0("I(sqrt(",l,")) ~ ClaimNb")),data = data)
-}
-par(mfrow=c(1,1))
 
 # Transformations ? ------------------------------------------------------------
 modele.GAM <- gam::gam(ClaimNb ~ VehValue + offset(log(Exposure)),
                   data = data, family = poisson("log"))
 plot(modele.GAM) 
-#' Aucune transformation nécessaire.
+#' Aucune transformation nécessaire sur la variable VehValue.
 
-summary(data$ClaimNb)
-var(data$ClaimNb)
+
 # Analyse de la surdispersion --------------------------------------------------
 # Modèle de Poisson
 modele_Poisson <-  glm(ClaimNb ~ .-Exposure, offset = log(Exposure),
@@ -497,18 +488,14 @@ modele_Poisson %>% summary()
 # Modèle binomial négative
 modele_BinomNeg <- MASS::glm.nb(ClaimNb ~ .-Exposure + offset(log(Exposure)), 
                           data = data, link="log")
-lmtest::lrtest(modele_Poisson, modele_BinomNeg)
-
-
-AIC(modele_Poisson, modele_BinomNeg)
-BIC(modele_Poisson, modele_BinomNeg)
 
 l0 <- logLik(modele_Poisson)
 l1 <- logLik(modele_BinomNeg)
 0.5 *(1 - pchisq(2*(l1 - l0), 1)) %>% as.numeric()
 #' Avec un test du ratio de vraisemblance, on trouve que le modèle binomial 
 #' négative est significativement mieux ajusté aux données qu'un modèle 
-#' poissonien. Les statistiques de l'AIC et du BIC confirment ce constat.
+#' poissonien.
+
 
 # Sélection de variables -------------------------------------------------------
 modele_nul <- MASS::glm.nb(ClaimNb ~ 1 + offset(log(Exposure)), 
@@ -518,6 +505,19 @@ modele_complet <- modele_BinomNeg
 # --- Tester tous les sous-modèles ---
 # all_models <- glmulti::glmulti(modele_complet)
 #' Nécessite l'installation de JavaScript pour être utilisé...
+# cut_off <- -diff(AIC(modele_nul, modele_complet)$AIC) / 1.1
+# sick_tout <- glmbb::glmbb(
+#    ClaimNb ~ VehValue + VehAge + VehBody + Gender + DrivAge,
+#    family = quasipoisson("log"),
+#    criterion = 'AIC',
+#    data = data,
+#    cutoff = 10
+# )
+#' glmbb n'est pas fait pour gérer la famille binomiale négative
+#' et le modèle quasi-poissonien ne fonctionne pas pour une raison obscure.
+#' Pour ces raisons, on utilise l'approche algorithmique pour sélectionner les
+#' variables.
+
 
 # --- Méthode forward ---
 freq_forward <- MASS::stepAIC(
@@ -565,23 +565,7 @@ freq_stepwise %>% drop1(test="LRT")
 freq_stepwise %>% rsq::rsq(adj=T)
 #' Idem
 #' 
-freq_stepwise%>% add1(.~. + VehValue , test = "LRT")
 
-
-#--- Méthode all ---
-# library(glmbb)
-# cas_tous <- glmbb(ClaimNb ~ VehValue + VehAge+VehBody+ 
-#                      Gender+DrivAge + Exposure + VehValue * VehAge + VehBody* VehValue + Gender * DrivAge +DrivAge * VehValue,
-#                   ClaimNb ~ 1,
-#                   criterion="AIC",
-#                   cutoff=3,
-#                   family=poisson(link = "log"),data = data)
-# summary(cas_tous)
-# model_final <-  glm(ClaimNb ~ VehBody + DrivAge + offset(log(Exposure)) + VehValue*VehAge  ,
-#                     family=poisson(link = "log"),data = data, x = TRUE, y = TRUE)
-# summary(model_final)
-# summary(freq_forward)
-# rsq::rsq(model_final , adj=T)
 
 AIC(freq_forward, freq_backward, freq_stepwise)
 #' On trouve que les trois algorithmes de sélection de variables 
@@ -592,28 +576,40 @@ freq_model <- freq_forward
 # Ajout d'interactions ---------------------------------------------------------
 freq_model %>% add1(.~. +.^2 , test = "LRT")
 # Aucune interaction significative.
+freq_model %>% drop1(test = "LRT")
+# Toutes les variables du modèle sont significatives.
 
 
 # Réponse à la question 3 ------------------------------------------------------
-freq_model %>% anova()
-freq_model %>% coef()
+freq_model %>% summary()
+
+library(xtable)
+
+facteurs <- 
+   freq_model %>% coef() %>% exp() %>% as.tibble() %>%
+   mutate(Variable = names(freq_model$coefficients), .before=1) %>%
+   pivot_wider(Variable, Variable)
+
+facteurs %>% select(starts_with('DrivAge')) %>%
+   pivot_longer(starts_with('DrivAge'), 
+                names_to="Variable", 
+                values_to ="Coefficients") %>%
+   arrange(Coefficients) %>% xtable() %>% print(include.rownames=FALSE)
+data$DrivAge %>% unique() %>% as_tibble()
+
+facteurs %>% select(starts_with('VehBody')) %>%
+   pivot_longer(starts_with('VehBody'), 
+                names_to="Variable", 
+                values_to ="Coefficients") %>%
+   arrange(Coefficients) %>% xtable() %>% print(include.rownames=FALSE)
+data$VehBody %>% unique() %>% as_tibble()
+
+facteurs %>% select(starts_with('VehAge')) %>%
+   pivot_longer(starts_with('VehAge'), 
+                names_to="Variable", 
+                values_to ="Coefficients") %>%
+   arrange(Coefficients) %>% xtable() %>% print(include.rownames=FALSE)
+data$VehAge %>% unique() %>% as_tibble()
 
 
-   
-# --- Autre approche: régression régularisée (LASSO) ---
-# modele_glmnet_lasso <- glmnet(model$x[,-1], model$y ,
-#                                  family = poisson(link = "log"), alpha=1)
-# 
-# plot_glmnet(modele_glmnet_lasso)
-# 
-# set.seed(2020)
-# model <- lm(ClaimNb ~ .-Exposure, offset = log(Exposure),data = data, x=TRUE, y=TRUE)
-# cv_out <- cv.glmnet(model$x[,-1], model$y ,
-#                     family = poisson(link = "log"), alpha=1)
-# plot(cv_out)
-# 
-# coefs <- coef(modele_glmnet_lasso, s = c(cv_out$lambda.min,
-#                                          cv_out$lambda.1se))
-# colnames(coefs) <- c("lambda.min", "lambda.1se")
-# coefs
-# predictors <- rownames(coefs)[which(coefs[, 1] != 0)][-1]
+freq_model %>% add1(.~. + VehValue , test = "LRT")

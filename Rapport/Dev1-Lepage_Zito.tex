@@ -81,6 +81,7 @@
 \begin{document}
 	\renewcommand{\tablename}{Tableau}
 	\renewcommand{\figurename}{Illustration}
+	\renewcommand{\P}{\mathbb{P}}
 	
 	\begin{titlepage}
 		\centering % Centre everything on the title page
@@ -250,7 +251,7 @@ Après avoir réalisé ces étapes, il faut recommencer itérativement ce proces
 	
 	Avec la fonction \texttt{ols\_regress} du \textit{package} \texttt{olsrr}, on peut calculer plusieurs statistiques d'intérêt pour décrire les performances du modèle final. D'une part, on a un $R^2$ de prédiction qui est de 71\%, ce qui est très bon considérant que la mortalité est un phénomène complexe auquel il est impossible de décrire à 100\% avec des variables explicatives. D'autre part, la statistique de Wald nous indique que chacune des variables explicatives incluses dans le modèle est significative à un seuil de 5\%.
 	
-	\subsection{Calcule de la prédiction}
+	\subsection{Calcul de la prédiction}
 	Maintenant que l'on a un modèle appréciable, on aimerait calculer un estimé ponctuel ainsi qu’un intervalle de confiance à 95\% pour le taux de mortalité à un endroit pour lequel les variables A1 à A15 valent respectivement
 	\begin{center}
 		40 30 80 9 3 10 77 4100 13 46 15 25 26 145 55.
@@ -264,7 +265,7 @@ Après avoir réalisé ces étapes, il faut recommencer itérativement ce proces
 	D'abord, en jetant un œil sur les données, on se rend compte qu'un prétraitement est nécessaire. Effectivement, les variables \texttt{ca} et \texttt{thal} contiennent des points d'interrogation "\texttt{?}" puisque, pour certaines observations, ces métriques n'ont pas été calculées. Comme ces cas sont peu nombreux (6 observations), ils sont simplement écartés du jeu de données. D'autres modifications ont été apportées aux variables afin que le format des données soit cohérent avec leur nature. Pour plus de détail, voir le code informatique fournit en pièce jointe.
 	
 	
-	\subsection{Traitement de la multicollinéarité}	
+	\subsection{Traitement de la multicollinéarité}\label{sect_qst2_vif}
 	Comme pour la première question, afin de construire un modèle de prédiction, la première étape est de réaliser une analyse de multicolinéarité conformément à la section \ref{sect_multicollinearite}.
 	%
 	Comme cette étape ne concerne que la matrice $\boldsymbol{X}$, il n'est pas nécessaire d'entraîner un GLM à ce stade pour réaliser cette analyse. Ainsi, il est possible d'utiliser la fonction \texttt{ols\_vif\_tol()} en entraînant un modèle linéaire sur une variable réponse bidon. Se faisant, on trouve qu'aucune variable explicative ne semble a priori dépendre linéairement des autres. Cependant, on se rappelle que, pour les variables catégorielles, cette méthode est peu fiable. Pour cette raison, on regarde également la métrique du VIF généralisé (GVIF). Comme
@@ -312,7 +313,7 @@ Après avoir réalisé ces étapes, il faut recommencer itérativement ce proces
 	Soit $\pi$, la probabilité qu'un diagnostic de maladie coronarienne soit positif. On a
 	$$\pi = \mathrm{logistique}(\eta) = \mathrm{logit}^{-1}(\eta) = \frac{e^{\eta}}{1+e^\eta},$$
 	où $\eta = \boldsymbol{x'\beta}$ et $\boldsymbol{x'\beta}$ est représentée par \eqref{modele_final_q2}.
-	Par dérivation en chaîne, on a que 
+	Par dérivation en chaîne, on a 
 	\begin{align}\label{eq_derivee_pi}
 		\frac{\partial\pi}{\partial \boldsymbol{\beta}} 
 		= \frac{\partial\pi}{\partial \eta}\frac{\partial\eta}{\partial \boldsymbol{\beta}}
@@ -320,9 +321,9 @@ Après avoir réalisé ces étapes, il faut recommencer itérativement ce proces
 		= \frac{e^\eta}{(1+e^\eta)^2}\boldsymbol{x} 
 		= \pi(1-\pi)\boldsymbol{x}.
 	\end{align}
-	Comme $\pi\in[0,1]$, alors $\pi(1-\pi)\in[0,1]$. Ainsi, pour $\boldsymbol{x}$ fixé, on déduit avec \eqref{eq_derivee_pi} que la fonction logistique est croissante par rapport aux coefficients.
+	Comme $\pi\in[0,1]$, alors $\pi(1-\pi)\in[0,1]$. Ainsi, si $\boldsymbol{x}$ est un vecteur de valeurs positives, on déduit avec \eqref{eq_derivee_pi} que la fonction logistique est croissante par rapport aux coefficients.
 	%
-	Cela signifie que si on augmente une seule variable explicative d'une unité, la prédiction de la probabilité de diagnostic positif augmentera si le coefficient visé est positif et elle diminuera dans le cas contraire.
+	Cela signifie que si on augmente une variable explicative d'une unité, la prédiction de la probabilité de diagnostic positif augmentera si le coefficient visé est positif et elle diminuera dans le cas contraire.
 	%
 	Conséquemment, les variables exogènes ayant un estimateur positifs seront associées à une hausse du risque d'un diagnostic positif de maladie coronarienne. Ces dernières sont: 
 	\begin{itemize}
@@ -344,29 +345,136 @@ Après avoir réalisé ces étapes, il faut recommencer itérativement ce proces
 	
 	
 \section{Question 3}
-	Cette question utilise les donnes d'assurance automobile australienne qui contient les valeurs de 3 caractéristiques du véhicule et 2 caractéristiques de l'assuré. L'objectif est de construire un modèle sur le nombre de réclamation par police. Plus précisément, on veut identifier lesquelles variables explicatives sont associée avec le nombre de réclamation. Puisqu’on cherche de modéliser un dénombrement, on modélise le nombre de réclamation avec une loi Poisson ou Binomial Négative. La fonction de lien pour le GLM est le logarithme. De plus, on applique un offset sur la variables \texttt{Exposure}, car elle est proportionnel au nombre de risque
+	Pour cette question, on utilise le jeu de données \texttt{ausprivauto0405} disponible sur le \textit{package} \texttt{R CASdatasets}. Celui-ci contient des données sur les polices d'assurance automobile d'une durée d'un an contractées en Australie entre 2004 et 2005. On y trouve trois caractéristiques du véhicule assuré et deux autres relatives au détenteur de police. On y voit aussi l'exposition (proportion de l'année où la police est active) et le nombre d'accidents survenus lors de la couverture de la police.
+	%
+	L’objectif est de construire un modèle de régression qui permettrait d'identifier les variables ayant une association significatives avec le nombre de réclamations.
+	%
+	Puisque la variable endogène correspond à un dénombrement, un GLM Poisson est choisi pour réaliser la tâche. Afin de simplifier le modèle et l'interprétation, la fonction de lien log est retenue. Par ailleurs, puisque le dénombrement des accidents est proportionnel à l'exposition, on utilisera cette dernière variable comme terme d'\textit{offset}.
+	
 	
 	\subsection{Traitement de la multicollinéarité}
-	On commence par une analyse sur la multicollinéarité. Puisqu'on a principalement des variables catégorielles, il faut utiliser le VIF agrégée. La fonction \texttt{vif} du package \texttt{car} nous permet de calculer le VIF agrégée. Finalement, on n'observe aucune valeur supérieur a 10, donc la multicollinéarité n'est pas un problème. 
+	Comme dans la section \ref{sect_qst2_vif}, on est en présence de plusieurs variables catégorielles. Conséquemment, la métrique appropriée pour vérifier la multicolinéarité est le VIF généralisé qui est calculé avec la fonction \texttt{vif} du \textit{package} \texttt{car}.
+	Comme $(\mathrm{GVIF}_j)^{1/(2p_j)} < 3, j=1,2,\dots,5,$ alors on déduit qu'il n'y a pas de problème de multicolinéarité.
+
 	
 	\subsection{Traitement de la surdispersion}
+	On sait que la loi de Poisson a une espérance égale à sa variance. En termes des lois de la famille exponentielle, cela implique que le paramètre de dispersion $\phi$ doit être très près de 1.
+	Or, l'estimateur de la méthode des moments de ce paramètre, qui est calculé à l'aide de \eqref{estimateur_parametre_dispersion}, donne une valeur de $0.373606$. On déduit donc que le modèle est sous-dispersé.
+	\begin{equation}\label{estimateur_parametre_dispersion}
+		\hat{\phi}_D = D(\boldsymbol{y};\hat{\boldsymbol{\mu}})/(n-p),
+	\end{equation}
+	où $D(\boldsymbol{y};\hat{\boldsymbol{\mu}})$ correspond à la statistique de déviance du modèle, $n$ représente le nombre d'observations, soit $n=67\,856$, et $p$ correspond au nombre de paramètres du modèle, soit $p=23$.
+	%
+	La façon la plus commune de traiter les données de dénombrement avec variabilité extra-poissonienne est de supposer un modèle de type binomiale négative.
+	%
+	Étant donnée que le modèle de Poisson est une simplification du modèle binomial négative (paramètre $\alpha=0$ dans le cas poissonien), on peut procéder au test du ratio des vraisemblances pour déterminer si le modèle binomial négative améliore significativement la vraisemblance par rapport au GLM Poisson. Cependant comme le test d'hypothèse est hors norme (le test d'hypothèse est unilatéral), il faut adapter le calcul du seuil observé avec \eqref{Pvalue_LRT_surdispersion}.
+	\begin{equation}\label{Pvalue_LRT_surdispersion}
+		p_{\mathrm{value}} = 0.5\times \P[\chi^2_1 > 2(l_1 - l_0)],
+	\end{equation}
+	où $l_1$ et $l_0$ correspondent respectivement à la log-vraisemblance pour le modèle complet (binomial négative) et pour le modèle simplifié (Poisson).
+	Ainsi, en calculant \eqref{Pvalue_LRT_surdispersion} sur le jeu de données, on trouve un seuil observé de 
+	$1.904829\times 10^{-10}$. On rejette donc l'hypothèse nulle que le modèle de Poisson est suffisant pour conclure que le modèle binomial négative est mieux adapté aux données.
 	
-	On sait que la loi Poisson a une espérance égal a sa variance. Si on calcule la moyenne et la variance empirique du nombre de réclamation, on obtient $0.07276$ et $0.07739737$ respectivement. Sachant que la nombre de réclamation dominant la base de donnée est égal a 0, on peut conclure en premier vue que la variance et la moyenne ne sont pas égal. Il est donc probable que la loi Binomiale Négative est plus appropriée. La valeur phi du modèle complet avec la loi Poisson est de $0.373606$. La valeur devrait être proche de 1 pour la loi Poisson, c est donc un autre indice de sous-dispersion. 
-	Afin de choisir définitivement en la loi appropriée, on fait un test du ratio de vraisemblance. L'hypothèse nulle est le modèle complet GLM avec la loi Poisson. La contre-hypothèse est le modèle complet GLM avec la loi Binomiale Négative. La valeur p de la statistique est proche de 0, on rejette l'hypothèse nulle. La vraisemblance est donc significativement meilleur pour la loi Binomiale Négative. Utiliser l'AIC ou le BIC comme critère donne la même conclusion. 
 	
 	\subsection{Sélection des variables explicatives}
+	Dans un premier temps, afin de vérifier si une transformation de la variable \texttt{VehValue} améliorerait le modèle, on peut utiliser la fonction \texttt{gam} comme dans la section \ref{sect_qst2_selection_variables}. Se faisant, on réalise que non, aucune transformation n'est requise.\\
 	
-	Comme pour la question 2, section \ref{sect_qst2_selection_variables}, on utilise la fonction R \texttt{stepAIC} et les trois approches différents pour trouver le meilleur sous-modèle. Les trois approches donne le meme sous-modèle \eqref{modele_both_q3}.
-	\begin{align}\label{modele_both_q3}
-	\mathrm{ClaimNb} &\sim \mathrm{DrivAge + VehAge + VehBody + offset(log(Exposure))
-	}
-	\end{align}	
- 
-	On a donc trois variables explicatives qui sont associées au nombre de réclamation.
+	Par la suite, pour faire la sélection des variables explicatives, il aurait été idéal de tester tous les sous-modèles possibles pour sélectionner celui qui maximise l'explicabilité de la variable endogène. Cependant, avec \texttt{R}, la fonction \texttt{glmbb} ne peut être appliqué avec la loi binomiale négative. 
+	%
+	La fonction \texttt{glmulti} provenant du \textit{package} du même nom nécessite l'installation de \texttt{JavaScript}. Pour les fins de ce travail, afin d'éviter des difficultés de correction, nous avons décidé de ne pas tester la fonction.
+	%
+	Pour ces raisons, les méthodes algorithmiques ont été privilégiées. Ainsi, la fonction \texttt{stepAIC} du \textit{package} \texttt{MASS} permet de trouver le modèle \eqref{modele_selectionne_qst3}, peu importe qu'on soit sous l'approche d'inclusion, d'exclusion ou pas-à-pas.
+	\begin{equation}\label{modele_selectionne_qst3}
+		\mathrm{ClaimNb} \sim \mathrm{DrivAge + VehAge + VehBody + offset(log(Exposure))}.
+	\end{equation}
 	
-	\subsection{Association avec la valeur relative du véhicule}
-	Le modèle finale n'inclue pas la valeur relative du véhicule. Avec un teste de ratio de vraisemblance, la variable de valeur relative du véhicule n'ajoute pas assez de valeur et est donc écarté du modèle.
+	Il ne reste plus qu'à regarder si l'inclusion d'une interaction améliorerait les performances du modèle.
+	Avec un test du ratio de vraisemblance, on trouve qu'aucune interaction n'est significative au seuil de 5\%.
 	
+	\subsection{Description du modèle final}
+	Dans un premier temps, on s'intéresse à savoir quelles variables contribuent à augmenter l'espérance du nombre de sinistres automobiles qui surviennent dans une année. Pour se faire, on peut calculer la dérivée première de cette espérance par rapport aux coefficients de régression.
+	Soit $\mu$, l'espérance du nombre d'accidents automobiles survenus dans une année. Avec le lien log, on a
+	\begin{equation}\label{lien_log}
+		\mu = e^{\eta},
+	\end{equation} 
+	où $\eta = \boldsymbol{x'\beta}$ et $\boldsymbol{x'\beta}$ est représenté par \eqref{modele_selectionne_qst3}. Par dérivation en chaîne, on a
+	\begin{align}\label{derivee_mu}
+		\frac{\partial \mu}{\partial \boldsymbol{\beta}} = \frac{\partial \mu}{\partial \eta}\frac{\partial \eta}{\partial \boldsymbol{\beta}} = e^\eta \boldsymbol{x} = \mu\boldsymbol{x}.
+	\end{align}
+	Comme $\mu\geq0$, alors, si $\boldsymbol{x}$ est un vecteur de valeurs positives, on déduit avec \eqref{derivee_mu} que l'espérance du nombre de sinistres survenus dans une année est une fonction croissante par rapport aux coefficients de la régression.\\
+	
+	L'un des grands avantages de la fonction de lien log pour la régression de Poisson et binomiale négative, c'est sa facilité d'interprétation. En effet, si une variable $x_j$ augmente d'une unité, alors l'espérance du nombre d'accident dans une année sera multipliée par $e^{\beta_j}$. Ces valeurs multiplicatives sont calculées pour chacune des variables explicatives dans les tableaux \ref{facteurs_multiplicatifs_DriveAge} à \ref{facteurs_multiplicatifs_VehAge}.\\
+	
+	Dans un premier temps, interprétons ce que le coefficient $\hat{\beta}_0$ veut dire dans le modèle.
+	Dans cette situation, on considère un assuré relativement âgé (\texttt{old people}), qui conduit un vieux  bus. Dans ce cas, l'espérance du nombre d'accident pour ce genre d'assuré, pour une année, est de $e^{-1.17389} \approx 0.309$. Par la suite, les facteurs présentés dans les tableaux \ref{facteurs_multiplicatifs_DriveAge} à \ref{facteurs_multiplicatifs_VehAge} viennent augmenter ou diminuer cette espérance selon les caractéristiques de l'assuré et de son véhicule.
+	
+	\begin{table}[H]
+		\centering
+		\begin{tabular}{lr}
+			\hline
+			Variables & Facteurs \\ 
+			\hline
+			DrivAgeoldest people & 1.01 \\ 
+			DrivAgeolder work. people & 1.25 \\ 
+			DrivAgeworking people & 1.28 \\ 
+			DrivAgeyoung people & 1.36 \\ 
+			DrivAgeyoungest people & 1.62 \\ 
+			\hline
+		\end{tabular}
+		\caption{Facteurs multiplicatifs pour la variable \texttt{DriveAge}.}
+		\label{facteurs_multiplicatifs_DriveAge}
+	\end{table}
+	Lorsque l'on regarde la variable \texttt{DriveAge}, on voit que la catégorie d'âge des assurés qui est la moins risquée correspond aux gens âgés (\texttt{old people}) et qui est associée au coefficient $\beta_0$. La catégorie d'âge la plus risquée, quant à elle, correspond aux plus jeunes conducteurs (\texttt{youngest people}) puisque le facteur multiplicatif correspondant est le plus élevé. On remarque que le risque diminue tandis que l'âge augmente jusqu'à ce que l'on arrive à un âge très respectable (\texttt{oldest people}). Dans ce cas, le risque réaugmente étant donnée que les réflexes du conducteur diminuent, de même que sa vision.
+
+	\begin{table}[H]
+		\centering
+		\begin{tabular}{lr}
+			\hline
+			Variables & Facteurs \\ 
+			\hline
+			VehBodyConvertible & 0.22 \\ 
+			VehBodyUtility & 0.33 \\ 
+			VehBodyHatchback & 0.37 \\ 
+			VehBodyMinibus & 0.38 \\ 
+			VehBodyTruck & 0.38 \\ 
+			VehBodySedan & 0.40 \\ 
+			VehBodyStation wagon & 0.41 \\ 
+			VehBodyPanel van & 0.42 \\ 
+			VehBodyHardtop & 0.44 \\ 
+			VehBodyRoadster & 0.59 \\ 
+			VehBodyCoupe & 0.61 \\ 
+			VehBodyMotorized caravan & 0.71 \\ 
+			\hline
+		\end{tabular}
+		\caption{Facteurs multiplicatifs pour la variable \texttt{VehBody}.}
+		\label{facteurs_multiplicatifs_VehBody}
+	\end{table}
+	Du point de vue du type de véhicule, on voit que la classe qui maximise l'espérance du nombre d'accident est le bus (associé à l'estimateur $\beta_0$) puisque tous les facteurs multiplicatifs sont inférieurs à 1. Le type de véhicule qui minimise cette espérance est le convertible. Si on analyse ces résultats plus en profondeur, on remarque que les véhicules les plus risqués, mis à part le bus, sont des véhicules sports (\texttt{roadster}, \texttt{coupe}) et ceux minimisant le risque sont des véhicules généralement conduits par des retraités (\texttt{convertibles}). Ainsi, bien que nous n'ayons pas observé d'interaction significative avec le test du rapport des vraisemblances, on remarque que certaines catégories de véhicule pourraient être associées à des groupes d'âge.
+
+	\begin{table}[H]
+		\centering
+		\begin{tabular}{lr}
+			\hline
+			Variables & Facteurs \\ 
+			\hline
+			VehAgeoldest cars & 0.93 \\ 
+			VehAgeyoungest cars & 1.09 \\ 
+			VehAgeyoung cars & 1.14 \\ 
+			\hline
+		\end{tabular}
+		\caption{Facteurs multiplicatifs pour la variable \texttt{VehAge}.}
+		\label{facteurs_multiplicatifs_VehAge}
+	\end{table}
+	
+	Finalement, en ce qui attrait à l'âge du véhicule, on a que la classe associée au coefficient $\beta_0$ est \texttt{old cars}. La classe la plus risquée est attribuée à \texttt{young cars} et celle qui est la moins sujette à un nombre élevé d'accident est \texttt{oldest cars}.\\
+	
+	On remarquera que le modèle final n'inclut pas la valeur relative du véhicule (\texttt{VehValue}). Si on applique un test du ratio des vraisemblances, on remarque que le seuil observé est de 0.1782. Comme ce seuil est très élevé, on déduit que cette variable n'est pas utile pour prédire le nombre d'accidents automobiles. En revanche, elle aurait pu être significative si on avait étudié le montant des sinistres. Dans ce cas, la valeur du véhicule aurait pu être utilisée comme variable d'exposition.
+	
+	
+	\bibliographystyle{apalike}
+	\bibliography{BibGLM}	
+	
+%	\clearpage
 	\appendix
 	\section{Illustrations}
 	\begin{figure}[H]
@@ -409,8 +517,7 @@ Après avoir réalisé ces étapes, il faut recommencer itérativement ce proces
 %		\label{Q2_transformations_2}
 %	\end{figure}
 	
-	\clearpage
-	\bibliographystyle{apalike}
-	\bibliography{BibGLM}	
+
+	
 	
 \end{document}
