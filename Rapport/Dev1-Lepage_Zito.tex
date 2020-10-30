@@ -178,13 +178,13 @@ L'objet de ce travail est d'expérimenter l'utilisation de cette famille de mod�
 %
 La premier d'entre eux consiste à réaliser une régression linéaire afin de prédire le taux de mortalité à partir de variables mesurant la pollution environnementale et les caractéristiques socio-démographiques de 60 localités.
 %
-Le second problème consiste à construire un modèle de régression qui estime
-la probabilité de diagnostic de maladie coronarienne. L'objectif étant de définir les facteurs associés à une hausse du risque d’un diagnostic positif de maladie coronarienne.
+Le second problème consiste à utiliser un modèle de régression afin de définir les facteurs associés à une hausse du risque d’un diagnostic positif de maladie coronarienne.
 %
-En ce qui a trait au dernier problème, celui-ci s'inscrit dans un contexte d'assurance automobile et consiste à construire un modèle afin de voir s’il y a une association entre les caractéristiques du véhicule et de l'assuré et le nombre de réclamations.
+En ce qui a trait au dernier problème, celui-ci s'inscrit dans un contexte d'assurance automobile et consiste à construire un modèle visant à voir s’il y a une association entre les caractéristiques du véhicule et de l'assuré et le nombre de réclamations.
+
 
 \section{Analyse et traitement de la multicollinéarité}\label{sect_multicollinearite}
-La force des modèles de régression linéaire provient de l'hypothèse que la matrice de schéma $\boldsymbol{X}$ est de plein rang; c.-à-d. qu'aucune colonne n'est linéairement dépendante des autres colonnes. Ce faisant, on s'assure qu'il n'existe qu'un seul inverse possible à la matrice $\boldsymbol{X}'\boldsymbol{X}$; de ce fait, on s'assure également que le vecteur des paramètres du modèle $\hat{\boldsymbol{\beta}}$ soit unique (un seul minimum à la fonction de perte utilisé pour l'entraînement). Ainsi, s'il existe un problème de multicolinéarité, il en découlerait que la matrice de schéma $\boldsymbol{X}$ ne serait plus de plein rang et il pourrait exister plusieurs minimum locaux à la fonction de perte utilisée pour entraîner le modèle. Il en résulterait alors une instabilité dans la convergence des paramètres et la variance de certaines de ces composantes serait démesurément grande.
+La force des modèles de régression linéaire provient de l'hypothèse que la matrice de schéma $\boldsymbol{X}$ est de plein rang; c.-à-d. qu'aucune colonne n'est linéairement dépendante des autres colonnes. Ce faisant, on s'assure qu'il n'existe qu'un seul inverse possible à la matrice $\boldsymbol{X}'\boldsymbol{X}$; de ce fait, on s'assure également que le vecteur des paramètres du modèle $\hat{\boldsymbol{\beta}}$ soit unique (un seul minimum à la fonction de perte utilisée pour l'entraînement). Ainsi, s'il existe un problème de multicolinéarité, il en découlerait que la matrice de schéma $\boldsymbol{X}$ ne serait plus de plein rang et il pourrait exister plusieurs minimum locaux à la fonction de perte utilisée pour entraîner le modèle. Il en résulterait alors une instabilité dans la convergence des paramètres et la variance de certaines de ces composantes serait démesurément grande.
 %
 Pour cette raison, avant même de réaliser la sélection de modèle pour chacune des étapes, il faut d'abord mesurer le degré de multicollinéarité entre les potentielles variables explicatives disponibles.\\
 
@@ -210,13 +210,13 @@ Dans ce cas, les solutions possibles consistent à appliquer une transformation 
 Après avoir réalisé ces étapes, il faut recommencer itérativement ce processus jusqu'à ce qu'il n'y ait plus de problème soulevé par l'analyse du VIF ou du GVIF.
 
 
-\section{Question 1}
+\section{Question 1}\label{sect_qst1}
 
 	Pour la première question de ce travail, on considère un jeu de données présentant des variables mesurant la pollution environnementale et les caractéristiques socio-démographiques de 60 localités. L'objectif de cette question est de valider qu'il est possible de prédire la mortalité d'une région en fonction de ces variables explicatives et de donner un estimé ponctuel ainsi qu’un intervalle de confiance à 95\% sur une observation de donnée.
 	
 	\subsection{Traitement de la multicollinéarité}
 	
-	Pour atteindre cet objectif, la première étape consiste à réaliser une analyse de multicollinéarité telle que décrite dans la section \ref{sect_multicollinearite}. Se faisant, on découvre que les VIFs pour les variables A12 et A13 sont supérieures à 10. Afin de traiter ce problème, on peut commencer par regarder s'il est pertinent d'effectuer une transformation non linéaire de certaines variables explicatives. Afin de visualiser les options envisageable, les illustrations \ref{Qst1_transformations_1} à \ref{Qst1_transformations_5} présentent l'effet d'une transformation logarithmique (au centre) et celui d'une transformation racine carrée (à droite) sur la relation existant entre la variable endogène et chacune des variables explicatives. Si on voit que cette transformation améliore la relation de linéarité existant entre les variables en question, alors on procède à la transformation appropriée. Suite à l'analyse des illustrations \ref{Qst1_transformations_1} à \ref{Qst1_transformations_5}, on en vient à considérer que les variables A12 et A13 méritent à recevoir une transformation logarithmique, de même que les variables A9 et A14 profiterait à recevoir une transformation racine carrée. Afin de valider ces observations, on teste différents modèles utilisant plusieurs combinaisons de transformations. Il advient que le modèle complet possédant l'AIC le plus petit est le suivant:
+	Pour atteindre cet objectif, la première étape consiste à réaliser une analyse de multicollinéarité telle que décrite dans la section \ref{sect_multicollinearite}. Se faisant, on découvre que les VIFs pour les variables A12 et A13 sont supérieures à 10. Afin de traiter ce problème, on peut commencer par regarder s'il est pertinent d'effectuer une transformation non linéaire de certaines variables explicatives. Afin de visualiser les options envisageable, les illustrations \ref{Qst1_transformations_1} à \ref{Qst1_transformations_5} présentent l'effet d'une transformation logarithmique (au centre) et celui d'une transformation racine carrée (à droite) sur la relation existant entre la variable endogène et chacune des variables explicatives. Si on voit que cette transformation améliore la relation de linéarité existant entre les variables en question, alors on procède à la transformation appropriée. Suite à l'analyse des illustrations \ref{Qst1_transformations_1} à \ref{Qst1_transformations_5}, on en vient à considérer que les variables A12 et A13 méritent à recevoir une transformation logarithmique, de même que les variables A9 et A14 profiteraient à recevoir une transformation racine carrée. Afin de valider ces observations, on teste différents modèles utilisant plusieurs combinaisons de transformations. Il advient que le modèle complet possédant l'AIC le plus petit est le suivant:
 	\begin{align}\label{modele_complet}
 		\mathrm{B} &\sim \mathrm{A1 + A2 + A3 + A4 + A5 + A6 + A7 + A8 + I(sqrt(A9))}\\
 			&\mathrm{+ A10 + A11 + I(log(A12)) + I(log(A13)) + I(log(A14)) + A15}.\nonumber
@@ -234,7 +234,7 @@ Après avoir réalisé ces étapes, il faut recommencer itérativement ce proces
 	Ainsi, si on compare les modèles \eqref{modele_traitement_multicol_methode_iterative} et \eqref{modele_traitement_multicol_methode_LASSO}, on trouve que le modèle \eqref{modele_traitement_multicol_methode_LASSO} est celui qui minimise l'AIC et qui maximise également la statistique du $R^2$ de prédiction. Conséquemment, il s'agira du modèle de base utilisé pour la sélection des variables.
 	
 	\subsection{Sélection des variables explicatives}
-	On se rappelle que l'objectif de cette question est de construire un modèle prédictif. Conséquemment, pour se faire, l'idéal est de produire tous les sous-modèles possibles découlant de \eqref{modele_traitement_multicol_methode_LASSO}.
+	On se rappelle que l'objectif de cette question est de construire un modèle prédictif. Pour se faire, l'idéal est de produire tous les sous-modèles possibles découlant de \eqref{modele_traitement_multicol_methode_LASSO}.
 	Cette opération peut être réalisée avec la fonction \texttt{ols\_step\_all\_possible} du \textit{package} \texttt{olsrr}. Une fois que tous les sous-modèles sont produits, on regarde les 3 modèles qui maximisent la statistique du $R^2$ de prédiction comme le démontre l'illustration \ref{Qst1_all_possible_models_top3}.
 	\begin{figure}[H]
 		\centering
@@ -242,13 +242,13 @@ Après avoir réalisé ces étapes, il faut recommencer itérativement ce proces
 		\caption{Résultats des trois meilleurs modèles selon la statistique du $R^2$ de prédiction.}
 		\label{Qst1_all_possible_models_top3}
 	\end{figure}
-	Comme les modèles 219 et 247 sont très comparables, on choisira celui qui est le plus simple étant donné que le jeu de données d'entraînement comporte très peu d'observations (60). Conséquemment, le modèle sélectionné est le suivant:
+	Comme les modèles 219 et 247 sont très comparables, on choisira celui qui est le plus simple étant donné que le jeu de données d'entraînement comporte très peu d'observations (60). Ainsi, le modèle sélectionné est le suivant:
 	\begin{equation}\label{modele_variables_selectionnees}
 		\mathrm{B} \sim \mathrm{A1 + A2 + A6 + A8 + I(log(A13)) + I(sqrt(A9))}.
 	\end{equation}
-	À ce stade, il pourrait être intéressant d'observer des interactions entre ces variables. Pour identifier celles qui sont d'intérêt, on applique le test F partiel sur toutes les interactions de 1er ordre possible. Se faisant, on trouve qu'aucune des interactions n'est significative au seuil de 1\%. Donc, le modèle \eqref{modele_variables_selectionnees} correspond à notre modèle final.\\
+	À ce stade, il pourrait être intéressant de voir si des interactions entre les variables amélioreraient le pouvoir de prédiction. Pour identifier celles qui sont intéressantes, on applique le test F partiel sur toutes les interactions de 1er ordre possible. Se faisant, on trouve qu'aucune des interactions n'est significative au seuil de 1\%. Donc, le modèle \eqref{modele_variables_selectionnees} correspond à notre modèle final.\\
 	
-	Avec la fonction \texttt{ols\_regress} du \textit{package} \texttt{olsrr}, on peut calculer plusieurs statistiques d'intérêt pour décrire celui-ci. D'une part, on a un $R^2$ de prédiction qui est de 71\%, ce qui est très bon considérant que la mortalité est un phénomène complexe auquel il est impossible de décrire à 100\% avec des variables explicatives. D'autre part, la statistique de Wald nous indique que chacune des variables explicatives incluses dans le modèle est significative à un seuil de 5\%.
+	Avec la fonction \texttt{ols\_regress} du \textit{package} \texttt{olsrr}, on peut calculer plusieurs statistiques d'intérêt pour décrire les performances du modèle final. D'une part, on a un $R^2$ de prédiction qui est de 71\%, ce qui est très bon considérant que la mortalité est un phénomène complexe auquel il est impossible de décrire à 100\% avec des variables explicatives. D'autre part, la statistique de Wald nous indique que chacune des variables explicatives incluses dans le modèle est significative à un seuil de 5\%.
 	
 	\subsection{Calcule de la prédiction}
 	Maintenant que l'on a un modèle appréciable, on aimerait calculer un estimé ponctuel ainsi qu’un intervalle de confiance à 95\% pour le taux de mortalité à un endroit pour lequel les variables A1 à A15 valent respectivement
@@ -258,53 +258,91 @@ Après avoir réalisé ces étapes, il faut recommencer itérativement ce proces
 	Avec la fonction \texttt{predict} du \textit{package} \texttt{stats}, on obtient un estimé de $\hat{B} = 999.4799$ ainsi qu'un intervalle de prédiction correspondant à  $B \in [936.0751, 1062.885]$.
 	
 \section{Question 2}
-	Pour la deuxième question de ce travail, on présente une base de donnée avec 13 variables explicatives qui mesure des métriques médicales du corps humain. L'objectif est de construire un modèle de régression qui estime la probabilité de diagnostic de maladie coronarienne positif. Ainsi, on veut identifier lesquelles des métriques médicales sont associes a une hausse du risque d,un diagnostic positif de la maladie coronarienne.
+	Pour la deuxième question de ce travail, on présente une base de données avec 13 variables explicatives, chacune mesurant une métrique médicales du corps humain. L'objectif est de construire un modèle de régression qui estime la probabilité de diagnostic positif pour la maladie coronarienne afin d'identifier les variables associées a une hausse du risque de développer la maladie.
 	
 	\subsection{Analyse préliminaire}
+	D'abord, en jetant un œil sur les données, on se rend compte qu'un prétraitement est nécessaire. Effectivement, les variables \texttt{ca} et \texttt{thal} contiennent des points d'interrogation "\texttt{?}" puisque, pour certaines observations, ces métriques n'ont pas été calculées. Comme ces cas sont peu nombreux (6 observations), ils sont simplement écartés du jeu de données. D'autres modifications ont été apportées aux variables afin que le format des données soit cohérent avec leur nature. Pour plus de détail, voir le code informatique fournit en pièce jointe.
 	
-	Afin d atteindre l'objectif de cette question, on commence par faire une analyse des variables explicatives. 
 	
-	Premièrement, on observe des "?" dans les donnees indiquant des valeurs manquantes. On décide d'écarter les 6 observations avec des valeurs manquantes, car ils ne sont pas nombreux.
-	
-	Deuxièmement, on trace des graphiques de boites a moustache pour les variables explicatives continues. On analysant les illustrations \ref{Q2_transformations_1} et \ref{Q2_transformations_2}, on n'identifie pas une variable explicative dominante et aucune transformation semble utile. On observes les moyennes différentes entre des cas la maladie coronarienne  positive ou négative. Certaines variables sembles avoir du pouvoir discriminant, mais il est difficile de tirée des conclusions claires, surtout avec la volatilité observe. On procède avec une analyse plus rigoureuse. 
-	
-	\subsection{Traitement de la multicollinéarité}
-	
-	Comme pour la question 1, on commence par identifier de la multicollinéarité dans les données. Puisque on s'intéresse seulement a des dépendances entre les variables explicatives, on peut utiliser un modèle linéaire standard avec toutes les 13 variables et calculer les VIFs pour chaque variable explicative. On observe aucune valeur de VIF supérieur a 10 et donc la multicollinéarité ne pose pas de problème pour cette question.
-	
+	\subsection{Traitement de la multicollinéarité}	
+	Comme pour la première question, afin de construire un modèle de prédiction, la première étape est de réaliser une analyse de multicolinéarité conformément à la section \ref{sect_multicollinearite}.
+	%
+	Comme cette étape ne concerne que la matrice $\boldsymbol{X}$, il n'est pas nécessaire d'entraîner un GLM à ce stade pour réaliser cette analyse. Ainsi, il est possible d'utiliser la fonction \texttt{ols\_vif\_tol()} en entraînant un modèle linéaire sur une variable réponse bidon. Se faisant, on trouve qu'aucune variable explicative ne semble a priori dépendre linéairement des autres. Cependant, on se rappelle que, pour les variables catégorielles, cette méthode est peu fiable. Pour cette raison, on regarde également la métrique du VIF généralisé (GVIF). Comme
+	$(\mathrm{GVIF}_j)^{1/(2 p_j)} < 3.16,$ pour $j=1,\dots,13$, alors on déduit qu'il n'y a pas de problème de multicolinéarité et on peut procéder à la sélection des variables explicatives.
 
 
-	\subsection{Sélection des variables explicatives}\label{q2_select}
-	L'objectif est de construire un model predictive. On cherche a prédire une probabilité de se trouve dans la classe 1, "diagnostic de maladie coronarienne positif". Une telle probabilité  peut être modélisé avec la loi binomial. Le modèle choisit est donc un GLM avec la loi binomiale et la fonction de lien \texttt{logit}. 
-	Afin de trouver les variables explicatives les plus pertinents, on choisit des approches itératives. La fonction R \texttt{stepAIC} du package \texttt{MASS} permet de itérativement sélectionner une variables, selon le critère AIC. On ajoute donc la variable, si elle réduit le AIC. On essaie trois méthode different: \texttt{"backward"},\texttt{"forward"} et \texttt{"both"}. La méthode \texttt{"backward"} part du modele complet avec 13 variables et retire a chaque itération la variable qui augmente le AIC le plus. La méthode \texttt{"forward"} part du modele nulle avec 0 variables et ajoute a chaque itération une variable. Elle choisit la variables qui a le plus petit AIC de toutes les sous-modele possible avec un variables de plus. La méthode \texttt{"both"} part du modele complet avec 13 variables et retire ou ajoute a chaque itération une variable qui diminue le AIC du nouveau sous-modèle. On obtient le meilleur \eqref{modele_back} AIC avec la méthode \texttt{"backward"}. 	
-	\begin{align}\label{modele_back}
-	\mathrm{Y} &\sim \mathrm{sex + cp + trestbps + thalach + exang + oldpeak + 
-		slope + ca + thal}
-	\end{align}
-	Les coefficients de pouls maximum atteint \texttt{thalach} et l'indicatrice indiquant la présence d’angine induite par l’exercice \texttt{exang} ne sont pas significative au seuil de 5\%. Alors, on continue avec des testes de ratio de vraisemblance au seuil 5\% en retirant \texttt{thalach} et \texttt{exang} individuellement. On décide que les deux variables n'ajoute pas assez de valeur, donc on les écartes du modèle. De plus, on teste des interactions. On identifie une interaction intéressante entre le nombre de vaissaux sanguins majeurs colorés par fluroscopie \texttt{ca} et \texttt{thal} qui est significative au seuil de 1\%. On obtient comme modèle final l'équation \eqref{modele_final_q2}.
+	\subsection{Sélection des variables explicatives}\label{sect_qst2_selection_variables}	
+	Pour cette question, comme la variable endogène est catégorielle, le type de modèle de régression sélectionné pour réaliser la tâche est le modèle linéaire généralisé de la famille binomiale. De plus, comme l'objectif est d'interpréter les paramètres du modèle, la fonction de lien retenue correspond à la fonction canonique, c.-à-d. la fonction logit.\\
+	
+	Dans un premier temps, avant de retirer des variables explicatives du modèle complet, il est pertinent de voir si certaines transformations appliquées sur les variables explicatives numériques pourraient améliorer l'explicabilité de la variable endogène. Pour se faire, on peut entraîner un modèle additif généralisé (GAM) à l'aide de la fonction \texttt{gam} qui provient du \textit{package} du même nom. Par la suite, il suffit de passer le modèle entraîné dans la fonction \texttt{plot} afin de visualiser graphiquement les transformations réalisées par la fonction \texttt{gam}. Si la courbe affichée est linéaire, cela signifie qu'aucune transformation n'est nécessaire. Autrement, la forme de la courbe donne une idée de la transformation à effectuer. Dans le cas présent, aucune transformation n'est nécessaire.\\
+
+	Dans un deuxième temps, afin de sélectionner les variables explicatives, la fonction \texttt{glmbb} du \textit{package} du même nom permet de tester tous les sous-modèles possibles en utilisant l'AIC comme critère de performance. Après avoir exécuté cette fonction, on sélectionne les cinq modèles minimisant ce critère. Étant donné que l'objectif est d'expliquer un phénomène et non de réaliser une prédiction, les cinq modèles restant sont comparés à l'aide du la statistique du $R^2$ ajusté. Ainsi, on trouve que le meilleur modèle correspond à \eqref{modele_selectionnes_qst2}.
+	\begin{equation}\label{modele_selectionnes_qst2}
+		\mathrm{Y} \sim \mathrm{thal + ca + cp + oldpeak + slope + sex + trestbps + 
+		exang + thalach}.
+	\end{equation}
+	
+	Les méthodes algorithmiques d'inclusion (\textit{forward}), d'exclusion (\textit{backward}) et pas-à-pas (\textit{stepwise}) ont également été testées avec la fonction \texttt{stepAIC} du \textit{package} \texttt{MASS}; ce faisant, on obtient le même résultat dans tous les cas.\\
+	
+	On désire maintenant voir si des interactions amélioreraient l'explicabilité de la variable endogène. On procède donc avec la méthode pas-à-pas avec le test du ratio des vraisemblance pour un seuil d'inclusion et d'exclusion de 5\%. Ce faisant, on trouve le modèle \eqref{modele_final_q2}.
 	\begin{align}\label{modele_final_q2}
-	\mathrm{Y} &\sim \mathrm{sex + cp + trestbps + oldpeak + slope + ca + 
-		thal + ca:thal}
-	\end{align}	
+		\mathrm{Y} &\sim \mathrm{sex + cp + trestbps + oldpeak + slope + ca + thal + ca:thal}.
+	\end{align}		
 	
-	On utilise aussi la fonction \texttt{"glmbb"} qui calcules toutes la sous-modèles possibles (en incluant des interactions).On choisit le modèle avec le AIC minimal et on obtient le modèle donnée par \eqref{modele_all}.
-	\begin{align}\label{modele_all}
-	\mathrm{Y} &\sim \mathrm{sex + cp + trestbps + thalach + oldpeak + slope + ca*thal}
-	\end{align}
-	On remarque que la seule différence est la variable \texttt{thalach} qu'on a écartée auparavant au seuil de 5\% avec le teste de ratio de vraisemblance. On garde donc le modèle \eqref{modele_final_q2} comme modèle finale. 
 	
-	\subsection{Facteur explicatives du modèle}
-	Afin de répondre a la question on analyse la sortie du modèle final \ref{model_final_q2_oouptut}.
+	\subsection{Facteurs explicatifs}
+	Afin de répondre a la question on analyse la sortie \texttt{R} de la fonction \texttt{summary} pour le modèle \eqref{modele_final_q2} tel que présenté dans l'illustration \ref{model_final_q2_sommaire}.
 	\begin{figure}[H]
-		\includegraphics[width=\textwidth]{graphiques/modele_final_q2}
-		\caption{Output R modèle finale Q2}
-		\label{model_final_q2_oouptut}
+		\centering
+		\includegraphics[width=0.6\textwidth]{graphiques/model_final_q2_sommaire}
+		\caption{Sortie \texttt{R} de la fonction \texttt{summary} pour le modèle \eqref{modele_final_q2}.}
+		\label{model_final_q2_sommaire}
 	\end{figure}
-	Selon notre modèle, les variables suivantes on tous une association positive avec un diagnostic positif de la maladie coronarienne: le sexe \texttt{sex}, la nature des douleurs a la poitrine \texttt{cp}, la tension artérielle au repos \texttt{trestbps}, la baisse dans ST lors de l exercice maximal \texttt{oldpeak} et la pente du segment de ST lors de l’exercice maximal \texttt{slope}. Toutes les coefficients sont supérieurs a $0$. Pour les variables explicatives \texttt{ca} et \texttt{thal}, la réponse est moins claire. Il y a des valeurs postivies et negatives pour les coefficient. Pour le le nombre de vaissaux sanguins majeurs colorés par fluroscopie \texttt{ca}, association pour une unitee positive de \texttt{ca} est donnée par l équation 
-	\begin{align}\label{eq_ca}
-	1.48959 + 17.14674 \times \texttt{thal3} -0.88747 \times \texttt{thal4}
+
+	La première chose que l'on remarque dans l'illustration \ref{model_final_q2_sommaire}, c'est que l'écart-type de l'estimateur associé à l'interaction \texttt{ca:thal6} est démesurément grand. Pourtant, une analyse de la multicollinéarité ne soulève aucun problème. On en déduit que cette variable n'est pas utile et pourrait probablement être regroupée avec \texttt{thal3}. Dans ce cas, l'interprétation de la variable \texttt{thal} ainsi modifiée serait que le défaut soit réparable ou non.
+	Si on procède à cette modification, le sommaire du modèle devient tel que présenté dans l'illustration \ref{model_final_q2_sommaire_2}.
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=0.6\textwidth]{graphiques/model_final_q2_sommaire_2}
+		\caption{Sortie \texttt{R} de la fonction \texttt{summary} pour le modèle \eqref{modele_final_q2} lorsque les classes 3 et 6 sont regroupées pour la variable catégorielle \texttt{thal}.}
+		\label{model_final_q2_sommaire_2}
+	\end{figure}
+	Désormais, toutes les classes de la variable \textit{thal} et de son interaction sont significative au seuil de 5\% selon le test de Wald et le problème de l'écart-type démesuré est réglé. On peut donc procéder à l'analyse de l'association des variables explicatives avec la variable endogène.\\
+
+	Soit $\pi$, la probabilité qu'un diagnostic de maladie coronarienne soit positif. On a
+	$$\pi = \mathrm{logistique}(\eta) = \mathrm{logit}^{-1}(\eta) = \frac{e^{\eta}}{1+e^\eta},$$
+	où $\eta = \boldsymbol{x'\beta}$ et $\boldsymbol{x'\beta}$ est représentée par \eqref{modele_final_q2}.
+	Par dérivation en chaîne, on a que 
+	\begin{align}\label{eq_derivee_pi}
+		\frac{\partial\pi}{\partial \boldsymbol{\beta}} 
+		= \frac{\partial\pi}{\partial \eta}\frac{\partial\eta}{\partial \boldsymbol{\beta}}
+		= \frac{e^\eta (1+e^\eta) - e^{2\eta}}{(1+e^\eta)^2} \boldsymbol{x}
+		= \frac{e^\eta}{(1+e^\eta)^2}\boldsymbol{x} 
+		= \pi(1-\pi)\boldsymbol{x}.
 	\end{align}
-	qui est donc toujours positive car $\texttt{thal3} \geq 0$ et $\texttt{thal3} \geq 0$. Pour \texttt{thal}, la relation n'est pas toujours positive. 
+	Comme $\pi\in[0,1]$, alors $\pi(1-\pi)\in[0,1]$. Ainsi, pour $\boldsymbol{x}$ fixé, on déduit avec \eqref{eq_derivee_pi} que la fonction logistique est croissante par rapport aux coefficients.
+	%
+	Cela signifie que si on augmente une seule variable explicative d'une unité, la prédiction de la probabilité de diagnostic positif augmentera si le coefficient visé est positif et elle diminuera dans le cas contraire.
+	%
+	Conséquemment, les variables exogènes ayant un estimateur positifs seront associées à une hausse du risque d'un diagnostic positif de maladie coronarienne. Ces dernières sont: 
+	\begin{itemize}
+		\item \texttt{sex}: le sexe,
+		\item \texttt{cp}: la nature des douleurs à la poitrine,
+		\item \texttt{trestbps}: la tension artérielle au repos,
+		\item \texttt{oldpeak}: la baisse du segment ST induite par l’exercice par rapport au repos,
+		\item \texttt{slope}: la pente du segment ST lors de l’exercice maximal.
+	\end{itemize}
+
+	En ce qui attrait aux variables explicatives \texttt{ca} et \texttt{thal}, l'association positive est moins claire étant donnée l'interaction qui existe entre elles. En effet, les coefficients associés à ces variables sont donnés respectivement par \eqref{eq_coefficient_ca} et \eqref{eq_coefficient_thal} .
+	\begin{align}\label{eq_coefficient_ca}
+		\left( 1.64857 -1.06758  \times \texttt{thal7}\right)
+	\end{align}
+	\begin{align}\label{eq_coefficient_thal}
+		\left(2.00222 -1.06758  \times \texttt{ca}\right)
+	\end{align}
+	On voit donc avec \eqref{eq_coefficient_ca} que le coefficient de \texttt{ca} est toujours positif, peu importe la valeur de  \texttt{thal7} puisque $1.64857 -1.06758 > 0$. Cependant, pour \texttt{thal7}, la polarité du coefficient dépendra de la valeur de \texttt{ca} puisque \texttt{ca} $\in \{0, 1, 2, 3\}$.
+	
+	
 \section{Question 3}
 	Cette question utilise les donnes d'assurance automobile australienne qui contient les valeurs de 3 caractéristiques du véhicule et 2 caractéristiques de l'assuré. L'objectif est de construire un modèle sur le nombre de réclamation par police. Plus précisément, on veut identifier lesquelles variables explicatives sont associée avec le nombre de réclamation. Puisqu’on cherche de modéliser un dénombrement, on modélise le nombre de réclamation avec une loi Poisson ou Binomial Négative. La fonction de lien pour le GLM est le logarithme. De plus, on applique un offset sur la variables \texttt{Exposure}, car elle est proportionnel au nombre de risque
 	
@@ -318,7 +356,7 @@ Après avoir réalisé ces étapes, il faut recommencer itérativement ce proces
 	
 	\subsection{Sélection des variables explicatives}
 	
-	Comme pour la question 2, section \ref{q2_select}, on utilise la fonction R \texttt{stepAIC} et les trois approches différents pour trouver le meilleur sous-modèle. Les trois approches donne le meme sous-modèle \eqref{modele_both_q3}.
+	Comme pour la question 2, section \ref{sect_qst2_selection_variables}, on utilise la fonction R \texttt{stepAIC} et les trois approches différents pour trouver le meilleur sous-modèle. Les trois approches donne le meme sous-modèle \eqref{modele_both_q3}.
 	\begin{align}\label{modele_both_q3}
 	\mathrm{ClaimNb} &\sim \mathrm{DrivAge + VehAge + VehBody + offset(log(Exposure))
 	}
@@ -357,19 +395,19 @@ Après avoir réalisé ces étapes, il faut recommencer itérativement ce proces
 		\label{Qst1_transformations_5}
 	\end{figure}
 
-	\begin{figure}[H]
-		\includegraphics[width=\textwidth]{graphiques/Q2_transformation_1}
-		\caption{Boites a moustache entre la variables explicative et la variable dépendante Y.
-		À gauche, on compare la variable endogène Y avec les variables exogènes. Au centre, on compare la même relation, mais avec une transformation logarithmique effectuée sur les variables exogènes. À droite, c'est la transformation racine carrée qui est appliquée.}
-		\label{Q2_transformations_1}
-	\end{figure}
-
-	\begin{figure}[H]
-		\includegraphics[width=\textwidth]{graphiques/Q2_transformation_2}
-		\caption{Boites a moustache entre la variables explicative et la variable dépendante Y.
-			À gauche, on compare la variable endogène Y avec les variables exogènes. Au centre, on compare la même relation, mais avec une transformation logarithmique effectuée sur les variables exogènes. À droite, c'est la transformation racine carrée qui est appliquée.}
-		\label{Q2_transformations_2}
-	\end{figure}
+%	\begin{figure}[H]
+%		\includegraphics[width=\textwidth]{graphiques/Q2_transformation_1}
+%		\caption{Boites a moustache entre la variables explicative et la variable dépendante Y.
+%		À gauche, on compare la variable endogène Y avec les variables exogènes. Au centre, on compare la même relation, mais avec une transformation logarithmique effectuée sur les variables exogènes. À droite, c'est la transformation racine carrée qui est appliquée.}
+%		\label{Q2_transformations_1}
+%	\end{figure}
+%
+%	\begin{figure}[H]
+%		\includegraphics[width=\textwidth]{graphiques/Q2_transformation_2}
+%		\caption{Boites a moustache entre la variables explicative et la variable dépendante Y.
+%			À gauche, on compare la variable endogène Y avec les variables exogènes. Au centre, on compare la même relation, mais avec une transformation logarithmique effectuée sur les variables exogènes. À droite, c'est la transformation racine carrée qui est appliquée.}
+%		\label{Q2_transformations_2}
+%	\end{figure}
 	
 	\clearpage
 	\bibliographystyle{apalike}

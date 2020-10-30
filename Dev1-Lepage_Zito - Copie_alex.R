@@ -15,6 +15,8 @@ library(glmnet)
 library(plotmo)
 library(CASdatasets)
 library(gam)
+library(rsq)
+
 current_path = rstudioapi::getActiveDocumentContext()$path
 setwd(dirname(current_path))
 
@@ -280,24 +282,30 @@ data <- data %>% mutate(
    num = NULL
 ) %>% drop_na()
 
+# Regrouper thal3 avec thal6
+data$thal[data$thal == 6] <- 3
+
+
+# Analyse préliminaire ---------------------------------------------------------
+variables_numeriques <- data %>% select(where(is.double), -Y) %>% colnames()
+par(mfrow=c(3,3))
+for (var_ in variables_numeriques) {
+   boxplot( as.formula(paste0(var_," ~ Y")), data = data)
+   boxplot( as.formula(paste0("I(log(",var_,"+1)) ~ Y")), data = data)
+   boxplot( as.formula(paste0("I(sqrt(",var_,"+1)) ~ Y")), data = data)
+}
+par(mfrow=c(1,1))
+
 
 # Analyse de la multicolinéarité -----------------------------------------------
 
 #' Comme on n'a pas besoin d'un modèle pour tester la multicolinéarité, on va
 #' se créer un modèle linéaire bidon qui permettra d'utiliser les outils du
 #' package olsrr.
-bidon <- lm(rnorm(nrow(data))~., data=data)
+bidon <- lm(rep(1, nrow(data)) ~., data=data)
 ols_vif_tol(bidon)
+car::vif(bidon)
 #' Il n'y a aucun signe de multicolinéarité.
-cc <- c("age", "trestbps","chol","thalach" ,"oldpeak","ca"  )
-# Analyse préliminaire
-par(mfrow=c(3,3))
-for (l in cc) {
-   boxplot( as.formula(paste0(l," ~ Y")),data = data)
-   boxplot( as.formula(paste0("I(log(",l,")) ~ Y")),data = data)
-   boxplot( as.formula(paste0("I(sqrt(",l,")) ~ Y")),data = data)
-}
-par(mfrow=c(1,1))
 
 
 # Transformations ? ------------------------------------------------------------
@@ -311,16 +319,36 @@ modele_nul <- glm(Y ~ 1, family = binomial("logit"), data = data)
 modele_complet <-  glm(Y ~ ., data = data, family = binomial("logit"), x=T, y=T)
 
 # --- Test de tous les sous-modèles ---
-# f <- as.formula(paste("Y~", paste(colnames(data[,-14]), collapse = '+')))
-# sick_tout <- glmbb::glmbb(f,
-#                           family=binomial("logit"),
-#                           criterion='AIC',
-#                           data=data)
-#' La fonction glmbb du package du même nom, n'est pas fait pour gérer les 
-#' variables catégorielles. Il faut donc utiliser des méthodes alternatives.
+cut_off <- -diff(AIC(modele_nul, modele_complet)$AIC) / 1.1
+f <- as.formula(paste("Y~", paste(colnames(data[,-14]), collapse = '+')))
+sick_tout <- glmbb::glmbb(f,
+                          family=binomial("logit"),
+                          criterion='AIC',
+                          data=data, 
+                          cutoff=cut_off)
+sum_glmbb <- summary(sick_tout)
+best_glmbb <- sum_glmbb$results %>% as_tibble() %>% top_n(-5, criterion)
+best_glmbb
+#' On va tester les cinq meilleurs modèles selon le critère du R-carré ajusté.
+
+modeles_Qst2 <- matrix(nrow = 5, ncol=2)
+colnames(modeles_Qst2) <- c('formula', 'R2-ajusted')
+k <- 1
+for (f in best_glmbb$formula){
+   modele <- glm(f, family = binomial("logit"), data = data)
+   rsq(modele, adj=T)
+   modeles_Qst2[k,] <- cbind(modele$formula, rsq(modele, adj=T))
+   k <- k+1
+}
+modeles_Qst2 <- modeles_Qst2 %>% as_tibble() %>% top_n(1,`R2-ajusted`)
+sick_model <- glm(modeles_Qst2$formula, family = binomial("logit"), data = data)
+summary(sick_model)
+rsq(sick_model, adj=T)
+#' On va aussi essayer les méthodes algorithmiques
+
 
 # --- Méthode forward ---
-   sick_forward <- MASS::stepAIC(
+sick_forward <- MASS::stepAIC(
    modele_nul,
    scope = list(upper = modele_complet, lower = modele_nul),
    trace = 0,
@@ -380,26 +408,14 @@ sick_stepwise %>% rsq::rsq(adj=T)
 #' k=4 -> Adj R-Squared = 0.5550493
 
 
-AIC(sick_forward, sick_backward, sick_stepwise)
+AIC(sick_model, sick_forward, sick_backward, sick_stepwise)
+rsq::rsq(sick_model, adj=T)
 rsq::rsq(sick_forward, adj=T)
 rsq::rsq(sick_backward, adj=T)
 rsq::rsq(sick_stepwise, adj=T)
-#' On trouve donc que les trois algorithmes de sélection de variables 
+#' On trouve donc que les 4 méthodes de sélection de variables 
 #' aboutissent au même modèle.
-sick_model <- sick_backward
 
-#--- Méthode all ---
-library(glmbb)
-clev_tous <- glmbb(Y~ age + sex + cp + trestbps + chol + 
-                      fbs + restecg + thalach + exang + oldpeak +ca*thal+slope*cp +
-                      slope + ca + thal ,Y~1,criterion="AIC",
-                   cutoff=3,
-                   family=binomial(link=logit),data = data)
-summary(clev_tous)
-model_final <-  glm(Y ~ sex + cp + trestbps + thalach + oldpeak + slope + ca*thal ,
-                    family=binomial(link=logit),data = data, x = TRUE, y = TRUE)
-summary(model_final )
-rsq::rsq(model_final , adj=T)
 
 # Ajout d'interactions ---------------------------------------------------------
 #' Approche stepwise avec seuil d'inclusion à 5% et seuil d'exclusion à 1% pour 
@@ -428,11 +444,11 @@ sick_model %>% rsq::rsq(adj=T) # 0.5875979
 
 
 # Réponse à la question 2 ------------------------------------------------------
-sick_model %>% anova()
+sick_model %>% summary()
 sick_model %>% coef()
-model_final %>% anova()
-summary(sick_model)
-summary(model_final)
+sick_model %>% car::vif()
+
+
 #============================= Question 3 ======================================
 rm(list=ls())
 
