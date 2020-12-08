@@ -1,0 +1,185 @@
+\documentclass{article}
+\usepackage[top=0.75in, bottom=0.75in, left=1.25in, right=1in]{geometry} % formatage
+\usepackage[frenchb]{babel}
+\usepackage[utf8]{inputenc} 
+\usepackage{amsmath} % pour utiliser des maths de base 
+\usepackage{amssymb} % pour faire \mathcal{}=>des lettres ''cursives''
+\usepackage{amsthm} % La petite boîte de fin de preuve
+\usepackage{graphicx} % pour importer des images...http://www.tex.ac.uk/cgi-bin/texfaq2html?label=figurehere
+\usepackage{titlesec} % automatique, pour faire des sous-titres moins laids
+%\usepackage{cancel}
+\usepackage[procnames]{listings}
+\usepackage[T1]{fontenc}        % http://tex.stackexchange.com/questions/11897/draw-a-diagonal-arrow-across-an-expression-in-a-formula-to-show-that-it-vanishes%
+\usepackage[squaren]{SIunits}
+\usepackage{subcaption} % Avoir plusieurs sous-figures (graphiques) dans une figures et pouvoire les étiqueter
+\usepackage{color}
+\usepackage{lipsum}
+\usepackage{caption}
+\usepackage{enumitem} % Permet d'avoir plus de flexibilité dans les enumerations.
+\usepackage{wasysym} 
+\usepackage{braket}
+\usepackage{mathtools}
+\usepackage{multirow} % Fusionner des lignes dans un tableau
+\usepackage{mathrsfs} % Faire le symbole de la transformée de Laplace
+\usepackage{bbm}
+\usepackage{array}
+\usepackage{diagbox} % diagonale dans les tableaux
+\usepackage{dsfont} % Faire des belles indicatrices                         
+\usepackage{float} % placer les tableaux et images où tu veux
+\usepackage{listings}
+\usepackage[utf8]{inputenc}
+\usepackage{comment}
+\usepackage{pst-node}
+\usepackage{fancyvrb} % Les varbatims gardent l'indentation
+\usepackage{enumitem}
+\usepackage{breakcites} % Faire en sorte que les citations ne sortent pas dans la marge
+\usepackage{graphicx} % Insérer des graphiques
+\usepackage{pgfplots}
+\usepackage{hyperref} % Faire des hyperliens
+\usepackage{verbatim} % Inclure un fichier .text en verbatim
+\usepackage{xcolor}
+\pgfplotsset{width=10cm, compat=1.9}
+
+% Changer la couleur des hyperliens
+\hypersetup{colorlinks = true,
+	allcolors  = blue, % default color = black
+	%	citecolor  = black
+}  
+
+
+% redefine \VerbatimInput
+\RecustomVerbatimCommand{\VerbatimInput}{VerbatimInput}%
+{fontsize=\footnotesize,
+	%
+	frame=lines,  % top and bottom rule only
+	framesep=2em, % separation between frame and text
+	rulecolor=\color{Gray},
+	%
+	label=\fbox{\color{Black}data.txt},
+	labelposition=topline,
+	%
+	commandchars=\|\(\), % escape character and argument delimiters for
+	% commands within the verbatim
+	commentchar=*        % comment character
+}
+
+
+\newcommand{\RomanNumeralCaps}[1]
+    {\MakeUppercase{\romannumeral #1}}
+
+\newtheorem{lemme}{Lemme}
+\newtheorem{preuve}{Preuve}
+\newtheorem{code}{Code informatique}
+\newtheorem{exemple}{Exemple}
+\newtheorem{scenario}{Scénario}
+\newtheorem{algo}{Algorithme}
+\newtheorem{definition}{Définition}
+\newtheorem{proposition}{Proposition}
+\newtheorem{propriete}{Propriété}
+\newtheorem{test_hypothese}{Teste d'hypothèse}
+
+\begin{document}
+	\renewcommand{\tablename}{Tableau}
+	\renewcommand{\figurename}{Illustration}
+	\renewcommand{\P}{\mathbb{P}}
+	
+	\begin{titlepage}
+		\centering % Centre everything on the title page
+		
+		\scshape % Use small caps for all text on the title page
+		
+		\vspace*{7\baselineskip} % White space at the top of the page
+		
+		%------------------------------------------------
+		%	Title
+		%------------------------------------------------
+		
+		\rule{\textwidth}{1.6pt}\vspace*{-\baselineskip}\vspace*{2pt} % Thick horizontal rule
+		\rule{\textwidth}{0.4pt} % Thin horizontal rule
+		
+		\vspace{0.75\baselineskip} % Whitespace above the title
+		{\LARGE Travail pratique 2\\} % Title
+%		\vspace{0.75\baselineskip}
+		\vspace{0.75\baselineskip} % Whitespace below the title
+		
+		\rule{\textwidth}{0.4pt}\vspace*{-\baselineskip}\vspace{3.2pt} % Thin horizontal rule
+		\rule{\textwidth}{1.6pt} % Thick horizontal rule
+		
+		\vspace{4\baselineskip} % Whitespace after the title block
+		
+		%------------------------------------------------
+		%	Subtitle
+		%------------------------------------------------
+		
+		Travail présenté à \\
+		{\scshape\Large M. Thierry Duchesne\\}
+		
+		\vspace*{4\baselineskip}
+		
+		Dans le cadre du cours\\
+		{\scshape\Large Théorie et applications des méthodes de régression \\ STT-7125}
+		
+		% Subtitle or further description
+		
+		\vspace*{4\baselineskip} % Whitespace under the subtitle
+		
+		%------------------------------------------------
+		%	Editor(s)
+		%------------------------------------------------
+		
+		Réalisé par l'équipe 21:\\
+		{\scshape\Large Alexandre Lepage\\
+		\& Amedeo Zito} % Editor list
+		
+		\vspace*{5\baselineskip}
+		
+		le 17 décembre 2020
+		
+		\vspace{0.4\baselineskip} % Whitespace below the editor list
+		
+		\vfill % Whitespace between editor names and publisher logo
+		
+		%------------------------------------------------
+		%	Publisher
+		%------------------------------------------------
+		
+		\includegraphics[height=1.2cm]{UL_P.pdf}\\
+		
+		Faculté des sciences et de génie\\
+		École d'actuariat\\
+		Université Laval
+		
+		\vspace*{3\baselineskip}
+		
+	\end{titlepage}
+	
+%	\pagenumbering{Roman} % Pagination en chiffres romains
+%	\setcounter{page}{0} 
+%	
+%	\newpage
+%	\strut % Page blanche
+%	\newpage
+%	
+%	\tableofcontents
+%	\renewcommand{\listfigurename}{Liste des illustrations}
+%	\newpage
+%	
+%	\listoffigures
+%	\listoftables
+%	\newpage
+%	
+%	\pagenumbering{arabic} % Pagination en chiffres normaux
+%	\setcounter{page}{1}
+
+
+\section{Introduction}
+
+
+\section{Question 1}\label{sect_qst1}
+
+
+	
+
+	
+	
+\end{document}
