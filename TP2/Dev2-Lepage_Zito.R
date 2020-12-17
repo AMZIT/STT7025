@@ -407,8 +407,8 @@ tbl_betas <- cbind(
 )
 xtable::xtable(tbl_betas)
 
-sum_lmm_Qst1a$varcor$schid %*% diag(nrow=2)
-sum_lmm_Qst1a$sigma^2
+sum_lmm_Qst1b$varcor$schid %*% diag(nrow=2)
+sum_lmm_Qst1b$sigma^2
 
 
 data %>% mutate(  # Visualisation des résidus pour le modèle mixte entraîné
@@ -767,48 +767,30 @@ summary(model_EX)
 model_selectionne <- model_AR1
 #---- Analyse des variables exogènes ----
 
-selection_variable_GEE <- function(model, L) {
-   #' Fonction qui effectue le test chi-carré pour vérifier que les estimateurs
-   #' ne sont pas égaux à zéro.
-   #' H0: Le(s) paramètre(s) spécifiée(S) dans la matrice L sont égaux à zéro.
-   #' H1: Le(s) paramètre(s) spécifiée(S) dans la matrice L ne sont pas égaux
-   #' à zéro.
+selection_variable_GEE <- function(model) {
+   #' Fonction qui fait une inférence de type Wald sur la valeur des estimateurs
+   #' de régression
+   #' H0: beta_j = 0
+   #' H1: beta_j != 0
    #' @param model Un modèle de type GEE pré-entraîné.
-   #' @param L Matrice de test de dimension nb_test x nb_variables
    #' @return le seuil observé du test.
-   coefs <- model$coefficients
-   Vs <- model$robust.variance
-   r <- if (purrr::is_null(nrow(L))) 1 else nrow(L)
-   d <- if (r == 1) 0 else rep(0, r)
-   Lbeta <- L %*% coefs
-   if (r == 1) L <- t(L)
-   chi2 <- t(Lbeta - d) %*% solve(L %*% Vs %*% t(L)) %*% (Lbeta - d)
-   p_value <- 1 - pchisq(chi2, r)
-   print(paste("p-value:", round(p_value, 3), "Df:", r), quote=FALSE)
+   coefs <- summary(model)$coefficients
+   z <- coefs[,'Robust z']
+   coefs2 <- cbind(
+      as.data.frame(coefs), 
+      "Pr(>|z|)" = round(2 * (1 - pnorm(abs(z))), 4)
+      )
+   return(coefs2)
 }
 
 
-summary(model_selectionne)$coefficients
-L <- matrix(c(
-   0, 1, 0, 0,
-   0, 0, 1, 0,
-   0, 0, 0, 1), 
-   nrow=3, byrow = T)
-selection_variable_GEE(model_selectionne, L)
-#' On rejette l'hypothèse nulle que tous les coefficients de la régression sont
-#' égaux à zéro. Le modèle est donc utile.
-
-L <- c(0,0,0,1)
-selection_variable_GEE(model_selectionne, L)
-#' On ne peut pas rejeter H0 et on conclu que l'interaction group:time n'est pas
-#' utile.
+selection_variable_GEE(model_selectionne)
+#' Les variables group2mg et son interaction ne sont pas significatives au
+#' seuil de 5%. On retire donc l'interaction group2mg:time. 
 model_selectionne <- update(model_selectionne, .~.- group:time)
 
-L <- c(0, 0, 1)
-selection_variable_GEE(model_selectionne, L)
-L <- c(0, 1, 0)
-selection_variable_GEE(model_selectionne, L)
-#' Les deux autres variables sont significatives au seuil de 5%
+selection_variable_GEE(model_selectionne)
+#' Les variables restantes sont significatives au seuil de 5%
 
 model_final <- model_selectionne
 summary(model_final)
