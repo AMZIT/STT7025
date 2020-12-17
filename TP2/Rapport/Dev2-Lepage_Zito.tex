@@ -517,13 +517,57 @@ L'objet de ce travail pratique est de mettre en pratique ces deux modèles. Ains
 		
 
 \section{GEE pour le nombre d'auto-administrations de doses analgésiques}
+
+Cette question a comme objectif d'utiliser un GEE afin de modèlisé une étude sur effet d'addiction de doses analgésique. Les données contiennent $i = 1, \dots, 65$ patients sur $j=1,\dots,12$ période de 4 heurs. Les patients sont ensuite divisé en deux groupes, une avec une dose de 1 mg, soit $x_i =0$ et une avec une dose de 2 mg de morphine, soit $x_i =1$. On définit donc un modèle de dénombrement complet comme
+$$Y_{ij} = \beta_0 + \beta_1 x_i + \beta_2 t_j+ \beta_3 x_i t_j,$$
+avec $Y_{ij}$ le nombre de dose auto-administré dans l'intervalle de temps $t_j$. 
 	
 	\subsection{Modèle linéaire généralisé}
 	
-	\subsection{Équation d'estimation généralisée}
+	Dans ce contexte on peut utiliser un modèle de régression Poisson. Sachant que les $Y_{ij}$ pour tout $j$ sont dépendents entre eux, on ne peut pas simplement utiliser un GLM. Afin de tenir compte de cette dépendance à l'intérieur des grappes, on va utiliser un modèle linéaire généralisé. 
 	
+	On a tester plusieurs différents matrices de corrélation de travail: La non structuré (UN), la autorégressive (AR1),la structure échangeable et finalement la structure d'indépendance. On suppose que la drogue un impact à court terme. Les administrations de drogue les plus recents sont les plus importants et sont donc plus correllés. De ce fait, l'impacte se degrade dans le temps. Selon cette hypothese le model avec AR(1) serait le plus approprié.
+	On obtient pour la première ligne de la matrice 
+	$$
+	R_i(\alpha) = 
+	\begin{pmatrix}	
+	1.000000000 & 0.516425829 & 0.266695637 & 0.137728516 & 0.071126563 & 0.03673159 & 0.01896914  \\
+	0.009796156 & 0.005058988 & 0.002612592 & 0.001349210 & 0.0006967669
+	\end{pmatrix}
+	.$$
+	Ce qui implique un $\alpha = 0.516425829$. 
+	
+	Il y a que deux variables exogènes dans le modèle, on fait des testes chi-carrées pour valider leur importance statistique. On commence avec l'interaction $x_i$ et $t_j$. La valeur-p avec 1 degrée de liberté est 0.13. Donc on ne peut pas rejeter $H_0$ et donc on écarte l'interaction. On fait pareille pour $\beta_1$ et $\beta_2$. On obtient 0.015 et 0.0 respectivement, ce qui conclue qu'on garde les deux variables, pusiqu'on rejette $H_0$. Le
+	modèle final est donc 
+	$$Y_{ij} = \beta_0 + \beta_1 x_i + \beta_2 t_j .$$
+	Les paramètres sont 
+	$$\beta = \begin{pmatrix}
+	\beta_0 \\ 
+	\beta_1 \\
+	\beta_2
+	\end{pmatrix}
+	 = \begin{pmatrix}
+	2.05378263  \\
+	0.30742284 \\
+	-0.06091784
+	\end{pmatrix}$$
+	Il semble qu'augmenter la dose à 2mg a une relation positive avec le nombre de dose administré. Le temps a une relation inverse et diminue l'espérance de 5\% à chaque 4 heurs écoulés ($j$ augmente).  
 	\subsection{Prédiction pour la population}
-	
+	On fait une estimation ponctuelle pour $ x_i = 1$ et $t_j =5$. On obtient 
+	$$\eta = c \beta = 
+	\begin{pmatrix}
+	1 & 1& 5
+	\end{pmatrix}
+	\begin{pmatrix}
+	2.05378263  \\
+	0.30742284 \\
+	-0.06091784
+	\end{pmatrix} = 2.056616,$$
+	avec un intervalle de confiance 95\% de
+	$$ (1.87615, 2.237077).$$
+	Pour $E[Y_{i5}]$ on arrive à $7.819466$ dans un intervalle de confiance de $(6.528357, 9.365917)$
+	L'effet de la dose pour la population est de $0.3074228$ avec un intervalle de confiance de $(0.06038578, 0.55445990)$. Ainsi augmenter la dose à 2mg augmente en moyenne le nombre d'administrations de 35\% avec
+	IC entre $ (6\%, 74\%).$
 	
 \newpage
 \appendix
