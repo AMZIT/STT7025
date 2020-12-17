@@ -25,111 +25,76 @@ data <-
    data %>%
    select(-c(stuid, public, sex)) %>%
    mutate(white = factor(white),
-          schid = factor(schid)
+          schid = factor(schid),
+          ratio = (ratio-median(ratio)) / sd(ratio)
           )
 data %>%  glimpse()
 attach(data)
 
 
-#------------------------- Analyse graphique -----------------------------------
-data %>%
-   ggplot() +
-   geom_boxplot(aes(
-      x = factor(homework),
-      y = math
-   ), alpha = 0.6)
-#' Il semble exister une relation non linéaire entre le nombre d'heures
-#' d'étude et les résultats en math.
-
-data %>%
-   ggplot() +
-   geom_boxplot(aes(
-      x = factor(ratio),
-      y = math
-   ), alpha = 0.6)
-#' La variable ratio semble avoir une relation significative, mais il est 
-#' difficile de voir si celle-ci est linéaire.
-
-data %>%
-   ggplot() +
-   geom_boxplot(aes(
-      x = schid,
-      y = homework
-   ), alpha = 0.6)
-#' Le nombre d'heures d'étude des étudiants varie énormément selon
-#' l'école d'appartenance
-
-data %>%
-   ggplot() +
-   geom_boxplot(aes(
-      x = schid,
-      y = math
-   ), alpha = 0.6)
-#' Les résultats scolaires aussi.
-
-
 # a) ---------------------------------------------------------------------------
 #--- Entraînement d'un modèle linéaire standard ----
 lm_complet <- lm(
-   math ~ (homework + white + ratio)^2,
+   math ~ (homework + white + ratio),
    data=data)
+ols_vif_tol(lm_complet)
 ols_plot_resid_fit(lm_complet)
 #' Le modèle est biaisé. Les résidus ne sont pas centrés à zéro.
 #' Voyons voir si des transformations sur les xi pourrait améliorer le modèle.
 
 library(gam)
-gam_mod <- gam(math ~ (s(homework) + white + s(ratio))^2)
+gam_mod <- gam(math ~ s(homework) + white + s(ratio))
 plot(gam_mod, se=TRUE)
-#' Possiblement que transformer ratio pour (ratio-18)^2 pourrait améliorer le
-#' modèle. En ce qui attrait à homework, celle-ci peut demeurer telle quelle.
+#' Possiblement que l'ajout d'une variable ratio2=(ratio-18)^2 pourrait 
+#' améliorer le modèle. En ce qui attrait à homework, celle-ci peut demeurer 
+#' telle quelle.
 summary(gam_mod)
 # Les deux transformations sont significatives au seuil de 1%.
-data %>% mutate(  # Visualisation des résidus pour le GAM
-   Y_hat = predict(gam_mod),
-   residus = rstudent(gam_mod)
-   ) %>%
-   ggplot() +
-   geom_point(aes(
-         x=Y_hat,
-         y=residus
-      ), color='blue') +
-   geom_hline(yintercept = 0)
-# Problème non réglé.
 
+detach(data)
+data <- data %>% mutate(ratio2 = ratio^2)
+attach(data)
+
+gam_mod <- gam(math ~ s(homework) + white + s(ratio) + s(ratio2))
+par(mfrow=c(2,2))
+plot(gam_mod, se=TRUE)
+par(mfrow=c(1,1))
+summary(gam_mod)
+# Les relations sont maintenant toutes linéaires.
+
+lm_complet <- lm(
+   math ~ homework + white + ratio + ratio2,
+   data=data
+)
+# Analyse de multicolinéarité
+ols_vif_tol(lm_complet)
+
+# Ajout d'interactions
+add1(lm_complet, .~. +.^2, test = "F")
+lm_complet <- update(lm_complet, .~.+ white:ratio)
+add1(lm_complet, .~. +.^2, test = "F")
+lm_complet <- update(lm_complet, .~.+ white:ratio2)
+add1(lm_complet, .~. +.^2, test = "F")
+
+ols_vif_tol(lm_complet)
+
+ols_plot_resid_fit(lm_complet)
+#' Ce n'est pas bon, mais c'est le mieux que je puisse faire avec les variables
+#' disponibles.
 
 # Analyse BoxCox.
 MASS::boxcox(lm_complet)
 #' Comme lambda = 1 appartient à l'intervalle de confiance, on n'apporte aucune
 #' transformation à Y.
 
-
-lm_complet <- lm(
-   math ~ homework + I((ratio - 18)^2) + white,
-   data=data
-)
-
-
-# Analyse de multicolinéarité
-ols_vif_tol(lm_complet)
-
-
-# Ajout d'interactions
-add1(lm_complet, .~. +.^2, test = "F")
-lm_complet <- update(lm_complet, .~.+ I((ratio - 18)^2):white)
-add1(lm_complet, .~. +.^2, test = "F")
-
-
-ols_plot_resid_fit(lm_complet)
-#' Ce n'est pas bon, mais c'est le mieux que je puisse faire avec les variables
-#' disponibles.
-#' 
-#' Voyons voir si un modèle mixte pourrait expliquer ce biais.
-
+summary(lm_complet)
 
 # Calcul du MSE en entraînement.
 Y_hat <- predict(lm_complet)
 MSE_lm <- mean((math - Y_hat)^2)
 
+
+#' Voyons voir si un modèle mixte pourrait expliquer ce biais.
 
 #--- Analyse de corrélation ---
 data_residuals <- data %>% mutate(
@@ -177,6 +142,7 @@ plot_residuals_id()
 plot_residuals_variable(homework)
 plot_residuals_variable(white)
 plot_residuals_variable(ratio)
+plot_residuals_variable(ratio2)
 #' Il est difficile de tirer des conclusions de ces graphiques.
 #' Les tests du ratio des vraisemblances permettra de mettre les choses
 #' au clair sur les effets aléatoires.
@@ -184,36 +150,30 @@ plot_residuals_variable(ratio)
 
 #--- Entraînement des modèles linéaires mixtes (lmm) complets ----
 # des matrices de variance appropriées
-detach(data)
-data <- data %>% mutate(ratio2 = (ratio-18)^2)
-attach(data)
+
 lm_complet
 
 lmm_VC_UN <- lmer(  # Modèle mixte avec structure de variance VC, UN
-   math ~ homework + ratio2 + white + ratio2:white +
-      (homework | schid) + (ratio2 | schid),
+   math ~ homework + white + ratio + ratio2 + white:ratio + 
+      white:ratio2 +
+      (homework | schid),
    data=data,
    REML = TRUE
    )
 lmm_VC_UN1 <- lmer(  # Modèle mixte avec structure de variance VC, UN(1)
-   math ~ homework + ratio2 + white + ratio2:white +
-      (homework || schid) + (ratio2 || schid),
+   math ~ homework + white + ratio + ratio2 + white:ratio + 
+      white:ratio2 +
+      (homework || schid),
    data=data,
    REML = TRUE
 )
 lmm_CS_UN <- lme(# Modèle mixte avec structure de variance CS, UN
-   fixed = math ~ homework + ratio2 + white + ratio2:white,
-   random = ~ homework + ratio2 | schid,
+   fixed = math ~ homework + white + ratio + ratio2 + white:ratio +
+      white:ratio2,
+   random = ~ homework | schid,
    data = data,
    method='REML',
    correlation = corCompSymm()
-)
-lmm_AR1_UN <- lme(# Modèle mixte avec structure de variance AR(1), UN
-   fixed = math ~ homework + ratio2 + white + ratio2:white,
-   random = ~ homework + ratio2 | schid,
-   data = data,
-   method='REML',
-   correlation = corAR1()
 )
 
 
@@ -227,11 +187,14 @@ extractAIC_lme <- function(object) {
 
 
 # Comparaison des AIC
-extractAIC(lmm_VC_UN)
-extractAIC(lmm_VC_UN1)
-extractAIC_lme(lmm_CS_UN)
-extractAIC_lme(lmm_AR1_UN)
-
+tbl_AIC <- rbind(
+      "VC UN"=extractAIC(lmm_VC_UN),
+      "VC UN(1)"=extractAIC(lmm_VC_UN1),
+      "CS UN"=extractAIC_lme(lmm_CS_UN)
+   )
+colnames(tbl_AIC) <- list("dl", "AIC")
+xtable::xtable(tbl_AIC)
+tbl_AIC
 
 lmm_complet <- lmm_VC_UN
 summary(lmm_complet)
@@ -265,13 +228,10 @@ lrtest_lmm <- function(model_H0, model_H1) {
          quote=F)
 }
 
-lmm_H0 <- update(lmm_complet, .~.- (ratio2 | schid), REML=T)
-lrtest_lmm(lmm_H0, lmm_complet)
-lmm_complet <- lmm_H0
-#' On rejete H0 au seuil de 5% et on conserve l'effet aléatoire (ratio2 | schid)
-#' On conserve donc tous les effets aléatoires.
 
-lmm_H0 <- update(lmm_complet, .~.- (homework | schid) + (1 | schid), REML=T)
+lmm_H0 <- update(
+   lmm_complet,.~.- (homework | schid) + (1 | schid), REML=T
+   )
 lrtest_lmm(lmm_H0, lmm_complet)
 #' On rejette H0 et on conserve l'effet aléatoire (homework | schid)
 
@@ -281,11 +241,33 @@ summary(lmm_Q1a)
 
 #--- Sélection des effets fixes ----
 car::Anova(lmm_Q1a, type=3)
+lmm_Q1a <- update(lmm_Q1a, .~.- white:ratio2)
+car::Anova(lmm_Q1a, type=3)
+lmm_Q1a <- update(lmm_Q1a, .~.- white:ratio)
+car::Anova(lmm_Q1a, type=3)
+lmm_Q1a <- update(lmm_Q1a, .~.- ratio2)
+car::Anova(lmm_Q1a, type=3)
+lmm_Q1a <- update(lmm_Q1a, .~.- ratio)
+car::Anova(lmm_Q1a, type=3)
 
+summary(lmm_Q1a)
 
-# Calcul du MSE en entraînement.
+sum_lmm_Qst1a <- summary(lmm_Q1a)
+beta <- sum_lmm_Qst1a$coefficients[,1]
+sd_beta <- sum_lmm_Qst1a$coefficients[,2]
+tbl_betas <- cbind(
+   "Estimateurs"=beta,
+   "Écarts-types"=sd_beta,
+   beta + cbind(rep(-1, 3), rep(1, 3)) * qnorm(0.975) * sd_beta
+   )
+xtable::xtable(tbl_betas)
+
+sum_lmm_Qst1a$varcor$schid %*% diag(nrow=2)
+sum_lmm_Qst1a$sigma^2
+
+# Calcul du MSE.
 Y_hat <- predict(lmm_Q1a)
-(MSE_lmm_Q1a <- mean((math - Y_hat)^2))
+(MSE_lmm_Q1a <- mean((data$math - Y_hat)^2))
 MSE_lm
 #' Belle amélioration de l'erreur quadratique
 
@@ -297,11 +279,12 @@ data %>% mutate(  # Visualisation des résidus pour le modèle mixte entraîné
    geom_point(aes(
       x=predictions,
       y=residus
-   ), color=schid) +
+   ), color='blue') +
    geom_hline(yintercept = 0)
 #' Le prolème a changé: Les résidus sont linéaires, mais on a un problème
 #' d'hétéroscédasticité.
-data %>% mutate(  # Visualisation des résidus pour le modèle mixte entraîné
+data %>% arrange(schid)%>%
+   mutate(  # Visualisation des résidus pour le modèle mixte entraîné
    residus = rstudent(lmm_Q1a),
    id = row_number()
    ) %>%
@@ -315,43 +298,19 @@ data %>% mutate(  # Visualisation des résidus pour le modèle mixte entraîné
 
 # b) ---------------------------------------------------------------------------
 #--- Entraînement d'un modèle linéaire standard ----
-lm_complet <- lm(math ~ (meanses + homework + white + ratio2)^2, data=data)
-ols_plot_resid_fit(lm_complet)
-#' Mêmes constats qu'en a)
+lm_complet <- lm(math ~ meanses + homework + white + ratio + ratio2, data=data)
+ols_vif_tol(lm_complet)
+
+# Ajout d'interactions
+add1(lm_complet, .~. +.^2, test = "F")
+lm_complet <- update(lm_complet, .~.+ white:ratio2)
+add1(lm_complet, .~. +.^2, test = "F")
+lm_complet <- update(lm_complet, .~.+ meanses:white)
+add1(lm_complet, .~. +.^2, test = "F")
 
 ols_vif_tol(lm_complet)
-# Il y a présence de multicolinéarité
 
-
-multicol_diagnosis <- function(modele, TOL=0.5, TeX_table=FALSE) {
-   #' Fonction qui cible les variables problématiques
-   #' @param modele Un modèle linéaire sur lequel diagnostiquer le problème
-   #' de multicolinéarité;
-   #' @param TOL Seuil de tolérance pour déterminer que la proportion de 
-   #' variance soulève un problème de multicolinéarité;
-   #' @param TeX_table Variable booléenne. Si TRUE, affiche un tableau synthèse
-   #' en format LaTeX.
-   multicol_diagnosis <- ols_eigen_cindex(modele)
-   eigen_index <- rownames(multicol_diagnosis)
-   multicol_diagnosis <- 
-      multicol_diagnosis %>%  
-      mutate(j = eigen_index, .after=1) %>%
-      select(-Eigenvalue, -intercept) %>%
-      top_n(2, `Condition Index`) %>%
-      pivot_longer(-c(1,2), values_to='p_lj') %>%
-      filter(p_lj>=TOL)
-   
-   if (TeX_table)
-      multicol_diagnosis %>% xtable::xtable() %>% print(include.rownames=FALSE)
-   return(multicol_diagnosis)
-}
-
-
-multicol_diagnosis(lm_complet)
-lm_complet2 <- update(lm_complet, .~.-homework:white)
-ols_vif_tol(lm_complet2) %>% top_n(1, VIF)
-
-lm_complet <- lm_complet2
+ols_plot_resid_fit(lm_complet)
 
 
 Y_hat <- predict(lm_complet)
@@ -370,51 +329,54 @@ plot_residuals_variable(meanses)
 plot_residuals_variable(homework)
 plot_residuals_variable(white)
 plot_residuals_variable(ratio)
+plot_residuals_variable(ratio2)
 #' On voit que l'effet aléatoire (meanses|schid) pourrait expliquer la variation
 #' des résidus d'une grappe à une autre dans le modèle linéaire.
 
 
 #--- Entraînement des modèles linéaires mixtes (lmm) complets ----
-# des matrices de variance appropriées
 lm_complet
 
-rm(lmm_VC_UN, lmm_VC_UN1)
+rm(lmm_VC_UN, lmm_VC_UN1, lmm_CS_UN)
 lmm_VC_UN <- lmer(
-   math ~ meanses + homework + white + ratio2 + meanses:homework + 
-      meanses:white +
-      (meanses|schid) + (ratio2|schid) + (homework|schid),
+   math ~ meanses + homework + white + ratio + ratio2 + 
+      white:ratio2 + meanses:white +
+      (homework|schid),
    REML = TRUE
    )
-lmm_complet_UN1 <- lmer(
-   math ~ meanses + homework + white + ratio2 + meanses:homework + 
-      meanses:white +
-      (meanses||schid) + (ratio2||schid) + (homework||schid),
+lmm_VC_UN1 <- lmer(
+   math ~ meanses + homework + white + ratio + ratio2 + 
+      white:ratio2 + meanses:white +
+      (homework||schid),
    REML = TRUE
 )
+lmm_CS_UN <- lme(# Modèle mixte avec structure de variance CS, UN
+   fixed = math ~ meanses + homework + white + ratio + ratio2 + 
+      white:ratio2 + meanses:white,
+   random = ~ homework | schid,
+   data = data,
+   method='REML',
+   correlation = corCompSymm()
+)
 
-extractAIC(lmm_complet_UN)
-extractAIC(lmm_complet_UN1)
+# Comparaison des AIC
+tbl_AIC <- rbind(
+   "VC UN" = extractAIC(lmm_VC_UN),
+   "VC UN(1)" = extractAIC(lmm_VC_UN1),
+   "CS UN" = extractAIC_lme(lmm_CS_UN)
+)
+colnames(tbl_AIC) <- list("dl", "AIC")
+xtable::xtable(tbl_AIC)
+tbl_AIC
+
+lmm_complet <- lmm_VC_UN
+summary(lmm_complet)
 #' On a la même structure de variance qu'en a).
 
-lmm_complet <- lmm_complet_UN
-summary(lmm_complet)
-
-
 #--- Test des effets aléatoires ----
-
-lmm_H0 <- update(lmm_complet, .~.- (homework | schid), REML=T)
+lmm_H0 <- update(lmm_complet, .~.- (homework | schid) + (1 | schid), REML=T)
 lrtest_lmm(lmm_H0, lmm_complet)
 # On rejette H0 et on conserve l'effet aléatoire (homework|schid)
-
-lmm_H0 <- update(lmm_complet, .~.- (ratio2 | schid), REML=T)
-lrtest_lmm(lmm_H0, lmm_complet)
-lmm_complet <- lmm_H0
-# On ne peut rejeter H0 au seuil de 5% et on retire l'effet (ratio|schid)
-
-lmm_H0 <- update(lmm_complet, .~.- (meanses | schid), REML=T)
-lrtest_lmm(lmm_H0, lmm_complet)
-lmm_complet <- lmm_H0
-# On ne peut rejeter H0 au seuil de 5% et on retire l'effet (meanses|schid)
 
 lmm_Q1b <- lmm_complet
 summary(lmm_Q1b)
@@ -422,14 +384,31 @@ summary(lmm_Q1b)
 
 #--- Sélection des effets fixes ----
 car::Anova(lmm_Q1b, type=3)
-lmm_Q1b <- update(lmm_Q1b, .~.- meanses:homework)
+lmm_Q1b <- update(lmm_Q1b, .~.- white:ratio2 )
 car::Anova(lmm_Q1b, type=3)
 lmm_Q1b <- update(lmm_Q1b, .~.- ratio2)
 car::Anova(lmm_Q1b, type=3)
+lmm_Q1b <- update(lmm_Q1b, .~.- ratio)
+car::Anova(lmm_Q1b, type=3)
 lmm_Q1b <- update(lmm_Q1b, .~.- meanses:white)
 car::Anova(lmm_Q1b, type=3)
-
+lmm_Q1b <- update(lmm_Q1b, .~.+ meanses:homework )
+car::Anova(lmm_Q1b, type=3)
+lmm_Q1b <- update(lmm_Q1b, .~.- meanses:homework )
 summary(lmm_Q1b)
+
+sum_lmm_Qst1b <- summary(lmm_Q1b)
+beta <- sum_lmm_Qst1b$coefficients[,1]
+sd_beta <- sum_lmm_Qst1b$coefficients[,2]
+tbl_betas <- cbind(
+   "Estimateurs"=beta,
+   "Écarts-types"=sd_beta,
+   beta + cbind(rep(-1, 4), rep(1, 4)) * qnorm(0.975) * sd_beta
+)
+xtable::xtable(tbl_betas)
+
+sum_lmm_Qst1a$varcor$schid %*% diag(nrow=2)
+sum_lmm_Qst1a$sigma^2
 
 
 data %>% mutate(  # Visualisation des résidus pour le modèle mixte entraîné
@@ -480,7 +459,7 @@ data <-
    data %>%
    mutate(child = factor(child),
           group = factor(group),
-          age=age-6
+          temps=age-6
    )
 data %>%  glimpse()
 attach(data)
@@ -493,15 +472,16 @@ data %>% arrange(child, age) %>%
       y = height,
       colour = child
    ), alpha = 0.6) +
-   ylim(c(110, 150))
+   ylim(c(110, 150)) +
+   ylab('Grandeur')
 #' On voit que la relation entre l'âge des petites filles et leur grandeur est
 #' très linéaire.
 
 
-# Entraînement d'un modèle linéaire standard
-lm_complet <- lm(height ~ group + age + age:group,
+#--- Entraînement d'un modèle linéaire standard ----
+lm_complet <- lm(height ~ group + temps + temps:group,
                  data=data)
-ols_vif_tol(lm_complet)
+car::vif(lm_complet)
 
 Y_hat <- predict(lm_complet)
 MSE_lm <- mean((height - Y_hat)^2)
@@ -513,7 +493,7 @@ data_residuals <- data %>%
       residus_lm = rstudent(lm_complet),
       id = row_number()
       ) %>%
-   arrange(child, age)
+   arrange(child, temps)
 
 
 plot_residuals_variable <- function(variable){
@@ -522,8 +502,8 @@ plot_residuals_variable <- function(variable){
    #' @param variable La variable explicative que l'on désire regarder 
    data_residuals %>% 
       ggplot() +
-      geom_line(aes(
-         x = age,
+      geom_point(aes(
+         x = variable,
          y = residus_lm,
          colour = child
       ), alpha = 0.6) +
@@ -548,36 +528,39 @@ plot_residuals_id <- function() {
 
 
 plot_residuals_id()
-plot_residuals_variable(age)
+plot_residuals_variable(group)
+data_residuals %>% 
+   ggplot() +
+   geom_line(aes(
+      x = temps,
+      y = residus_lm,
+      colour = child
+   ), alpha = 0.6) +
+   geom_hline(yintercept = 0) +
+   xlab('temps') +
+   ylab("Résidus")
 #' On remarque que les courbes des résidus varient selon l'enfant.
 
 
-# --- Entraînement des modèles linéaires mixtes (lmm) complets et sélection ---
-# des matrices de variance appropriées
+#--- Entraînement des modèles linéaires mixtes (lmm) complets ----
 lm_complet
 
 lmm_VC_UN <- lmer(# Modèle mixte avec structure de variance VC, UN
-   height ~ group + age + group:age +
-      (age | child),
-   data = data, 
-   REML = TRUE
-   )
-lmm_VC_UN1 <- lmer(# Modèle mixte avec structure de variance VC, UN(1)
-   height ~ group + age + group:age +
-      (age || child), 
+   height ~ group + temps + group:temps +
+      (group | child),
    data = data, 
    REML = TRUE
    )
 lmm_CS_UN <- lme(# Modèle mixte avec structure de variance CS, UN
-   fixed = height ~ group + age + group:age,
-   random = ~ age | child,
+   fixed = height ~ group + temps + group:temps,
+   random = ~ group | child,
    data = data,
    method='REML',
    correlation = corCompSymm()
    )
 lmm_AR1_UN <- lme(# Modèle mixte avec structure de variance AR(1), UN
-   fixed = height ~ group + age + group:age,
-   random = ~ 1 | child,
+   fixed = height ~ group + temps + group:temps,
+   random = ~ group | child,
    data = data,
    method='REML',
    correlation = corAR1()
@@ -587,28 +570,33 @@ lmm_AR1_UN <- lme(# Modèle mixte avec structure de variance AR(1), UN
 extractAIC_lme <- function(object) {
    #' Fonction qui prend un modèle de la classe lme et qui calcule l'AIC
    #' @param object Modèle entraîné de la classe lme.
-   df = sum(object$dims$ncol, object$dims$qvec)
+   df = sum(object$dims$ncol, object$dims$qvec) + 1
    aic = -2 * (object$logLik - df)
+   if (round(AIC(object), 4) != round(aic, 4)){
+      print(paste(AIC(object), aic))
+      warning('Le nombre de degrés de liberté spécifié est incorrect.')
+      }
    return(c(df, aic))
 }
 
+
 # Comparaison des AIC
-extractAIC(lmm_VC_UN)
-extractAIC(lmm_VC_UN1)
-extractAIC_lme(lmm_CS_UN)
-extractAIC_lme(lmm_AR1_UN)
+tbl_AIC <- rbind(
+   "VC UN" = extractAIC(lmm_VC_UN),
+   "CS UN" = extractAIC_lme(lmm_CS_UN),
+   "AR(1) UN" = extractAIC_lme(lmm_AR1_UN)
+)
+colnames(tbl_AIC) <- list("dl", "AIC")
+xtable::xtable(tbl_AIC)
+tbl_AIC
+
+summary(lmm_AR1_UN)
+
 #' La structure de variance pour les résidus qui semble la plus adaptée selon 
 #' le critère de l'AIC est la structure auto-régressive d'ordre 1 (AR1).
-#' 
-#' Comme cette méthode ne converge que si l'effet aléatoire ne concerne que
-#' l'ordonnée à l'origine, on ne complexifiera pas ce dernier davantage.
-#' Conséquemment, comme il n'y a qu'un seul effet aléatoire, la structure de
-#' variance de ce dernier n'a aucune importance puique q=1 et que Di = sigma^2.
 lmm_complet <- lmm_AR1_UN
-summary(lmm_complet)
 
-
-#--- Test des effets aléatoires ---
+#--- Test des effets aléatoires ----
 lrtest_lmm <- function(model_H0, model_H1) {
    #' Fonction qui calcule le test du rapport des vraisemblances pour tester 
    #' la nécessité des effets aléatoires.
@@ -623,8 +611,20 @@ lrtest_lmm <- function(model_H0, model_H1) {
 }
 
 
+lmm_H0 <- lme(
+   fixed = height ~ group + temps + group:temps,
+   random = ~ 1 | child,
+   data = data,
+   method='REML',
+   correlation = corAR1()
+)
+lrtest_lmm(lmm_H0, lmm_complet)
+lmm_complet <- lmm_H0
+#' On ne peut rejeter H0; ce qui veut dire que l'on retire l'effet aléatoire
+#' group | child
+
 lmm_H1 <- lme(
-   fixed = height ~ group + age + group:age,
+   fixed = height ~ group + temps + group:temps,
    random = ~ 1 | child,
    data = data,
    method='ML',
@@ -632,7 +632,7 @@ lmm_H1 <- lme(
 )
 
 lmm_H0 <- lm(
-   height ~ group + age + group:age,
+   height ~ group + temps + group:temps,
    data = data
 )
 lrtest_lmm(lmm_H0, lmm_H1)
@@ -642,13 +642,200 @@ lrtest_lmm(lmm_H0, lmm_H1)
 lmm_Q2 <- lmm_complet
 
 
-#--- Sélection des effets fixes
+#--- Sélection des effets fixes ----
 car::Anova(lmm_Q2, type=3)
-# Toutes les variables sont significatives
+
+# Résultats finaux pour la question 2 ---------------------------
+sum_lmm_Qst2 <- summary(lmm_Q2)
+beta <- sum_lmm_Qst2$tTable[, 1]
+sd_beta <- sum_lmm_Qst2$tTable[, 2]
+tbl_betas <- cbind(
+   "Estimateurs"=beta,
+   "Écarts-types"=sd_beta,
+   beta + cbind(rep(-1, length(beta)),
+                rep(1, length(beta))) * qnorm(0.975) * sd_beta
+)
+xtable::xtable(tbl_betas)
+
+sum_lmm_Qst2
+sum_lmm_Qst2$sigma^2
+
+rho <- 0.9498482
+sd_residus <- 2.987839
+Vi <- sd_residus * matrix(
+   c(
+      rho^(0:4),
+      rho, rho^(0:3),
+      rho^(2:1), rho^(0:2),
+      rho^(3:0), rho,
+      rho^(4:0)
+   ), ncol=5
+   )
+round(Vi, 3)
 
 
 Y_hat <- predict(lmm_Q2)
 (MSE_lmm_Q2 <- mean((height - Y_hat)^2))
 MSE_lm
-#' L'ajout de l'effet aléatoire n'a apporté aucune amélioration de la prédiction
-#' sur les données d'entraînement.
+
+data %>% 
+   mutate(
+      residus_lm = residuals(lmm_Q2),
+      id = row_number()
+   ) %>%
+   arrange(child, age) %>% 
+   ggplot() +
+   geom_line(aes(
+      x = temps,
+      y = residus_lm,
+      colour = child
+   ), alpha = 0.6) +
+   geom_hline(yintercept = 0) +
+   xlab('temps') +
+   ylab("Résidus")
+
+detach(data)
+
+
+#============================= Question 3 ======================================
+rm(list=ls())
+library(gee)
+# Lecture des donnees
+
+data <- read.table("bolusdata_1.txt", header = TRUE)
+data %>% glimpse()
+data <- data %>% mutate(
+   group = factor(group)
+   )
+# a) ---------------------------------------------------------------------------
+#---- Structures de correlation de travail ----
+
+# Non structuré (UN) 
+#' (ici on peut l'utiliser car l'indice j signifie la meme chose pour toutes
+#' les grappes)
+model_UN <-
+   gee(
+      count ~ group + time + group:time,
+      id = id,
+      family = poisson(link = "log"),
+      corstr = "unstructured",
+      data = data
+   )
+summary(model_UN)
+#' La corrélation semble s'atténuer au fil du temps. Une structure AR(1) serait
+#' donc appropriée.
+
+# Et avec la structure AR(1)
+model_AR1 <-
+   gee(
+      count ~ group + time + group:time,
+      id = id,
+      family = poisson(link = "log"),
+      corstr = "AR-M",
+      Mv = 1,
+      data = data
+   )
+summary(model_AR1)
+
+# Structure d'indépendance
+model_IND <-
+   gee(
+      count ~ group + time + group:time,
+      id = id,
+      family = poisson(link = "log"),
+      corstr = "independence",
+      data = data
+   )
+summary(model_IND)
+
+# Structure échangeable
+model_EX <-
+   gee(
+      count ~ group + time + group:time,
+      id = id,
+      family = poisson(link = "log"),
+      corstr = "exchangeable",
+      data = data
+   )
+summary(model_EX)
+
+#' Choix du model: On suppose que la drogue un impact à court terme. 
+#' De ce fait, l'impacte se degrade dans le temps. 
+#' Selon cette hypothese le model avec AR(1) serait le plus approprie.
+#' Les administrations de drogue les plus recents sont les plus importants et 
+#' sont donc plus correllés.
+model_selectionne <- model_AR1
+#---- Analyse des variables exogènes ----
+
+selection_variable_GEE <- function(model, L) {
+   #' Fonction qui effectue le test chi-carré pour vérifier que les estimateurs
+   #' ne sont pas égaux à zéro.
+   #' H0: Le(s) paramètre(s) spécifiée(S) dans la matrice L sont égaux à zéro.
+   #' H1: Le(s) paramètre(s) spécifiée(S) dans la matrice L ne sont pas égaux
+   #' à zéro.
+   #' @param model Un modèle de type GEE pré-entraîné.
+   #' @param L Matrice de test de dimension nb_test x nb_variables
+   #' @return le seuil observé du test.
+   coefs <- model$coefficients
+   Vs <- model$robust.variance
+   r <- if (purrr::is_null(nrow(L))) 1 else nrow(L)
+   d <- if (r == 1) 0 else rep(0, r)
+   Lbeta <- L %*% coefs
+   if (r == 1) L <- t(L)
+   chi2 <- t(Lbeta - d) %*% solve(L %*% Vs %*% t(L)) %*% (Lbeta - d)
+   p_value <- 1 - pchisq(chi2, r)
+   print(paste("p-value:", round(p_value, 3), "Df:", r), quote=FALSE)
+}
+
+
+summary(model_selectionne)$coefficients
+L <- matrix(c(
+   0, 1, 0, 0,
+   0, 0, 1, 0,
+   0, 0, 0, 1), 
+   nrow=3, byrow = T)
+selection_variable_GEE(model_selectionne, L)
+#' On rejette l'hypothèse nulle que tous les coefficients de la régression sont
+#' égaux à zéro. Le modèle est donc utile.
+
+L <- c(0,0,0,1)
+selection_variable_GEE(model_selectionne, L)
+#' On ne peut pas rejeter H0 et on conclu que l'interaction group:time n'est pas
+#' utile.
+model_selectionne <- update(model_selectionne, .~.- group:time)
+
+L <- c(0, 0, 1)
+selection_variable_GEE(model_selectionne, L)
+L <- c(0, 1, 0)
+selection_variable_GEE(model_selectionne, L)
+#' Les deux autres variables sont significatives au seuil de 5%
+
+model_final <- model_selectionne
+summary(model_final)
+
+
+# b) ---------------------------------------------------------------------------
+# Estimation ponctuelle
+L <- c(1, 1, 5)
+c(t(L) %*% model_final$coefficients)
+# I.C. a 95%
+c(t(L) %*% model_final$coefficients) + c(-1, 1) *
+   1.96 * sqrt(c(t(L) %*% model_final$robust.variance %*% L))
+# pour E(Y):
+exp(c(t(L) %*% model_final$coefficients))
+exp(c(t(L) %*% model_final$coefficients) +
+       c(-1, 1) * 1.96 * sqrt(c(t(L) %*% model_final$robust.variance %*% L)))
+
+# I.C. effet moyen de la dose
+L <- c(0, 1, 0)
+c(t(L) %*% model_final$coefficients)
+# I.C. a 95%
+c(t(L) %*% model_final$coefficients) + c(-1, 1) *
+   1.96 * sqrt(c(t(L) %*% model_final$robust.variance %*% L))
+# pour E(Y):
+exp(c(t(L) %*% model_final$coefficients))
+exp(c(t(L) %*% model_final$coefficients) +
+       c(-1, 1) * 1.96 * sqrt(c(t(L) %*% model_final$robust.variance %*% L)))
+
+#' La dose de 2mg augmente en moyenne le nombre d'administrations de 35% avec
+#' IC entre 6% a 74%
