@@ -1,8 +1,13 @@
-*.Rhistory
+# R
+.Rhistory
+
+# LaTeX
 *.aux
 *.bbl
 *.blg
 *.log
+*.lof
+*.lot
 *.nav
 *.out
 *.snm

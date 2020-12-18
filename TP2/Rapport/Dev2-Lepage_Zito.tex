@@ -183,13 +183,13 @@
 \section*{Introduction}
 Les modèles linéaires (LM) et modèles linéaires généralisés (GLM) sont des outils fort utiles pour modéliser toute sorte de phénomènes et sont largement utilisés dans le milieu statistique. Cependant, ces modèles s'appuient sur l'hypothèse que les observations $Y_1,\dots,Y_n,\ n>0$ servant à les entraîner sont indépendantes; laquelle n'est pas toujours réaliste selon le contexte.\\
 
-Les modèles linéaires mixtes (LMM) permettent donc d'insérer une structure de dépendance entre les observations d'un LM. Du côté des GLM, il est possible d'effectuer un ajustement au modèle pour que la matrice de variance de celui-ci puisse tenir compte d'éventuelles covariances. De tels modèles ajustés sont appelés les GEE (\textit{Generalized Estimating Equation}).\\
+Les modèles linéaires mixtes (LMM) permettent donc d'insérer une structure de dépendance entre les observations d'un LM. Du côté des GLM, il est possible d'effectuer un ajustement au modèle pour que la matrice de variance de celui-ci puisse tenir compte d'éventuelles covariances entre les observations. De tels modèles ajustés sont appelés des GEE (\textit{Generalized Estimating Equation}).\\
 
-L'objet de ce travail pratique est de mettre en pratique ces deux modèles. Ainsi, les questions 1 et 2 abordent le sujet des modèles linéaires mixtes tandis que la question 3 aborde le sujet des GEE.
+L'objet de ce travail pratique est de mettre en pratique ces deux types de modèles de régression. Ainsi, les questions 1 et 2 abordent le sujet des modèles linéaires mixtes tandis que la question 3 aborde le sujet des GEE.
 
 
 \section{Modèle linéaire mixte pour les résultats en mathématique}\label{sect_qst1}
-	Pour la première question de ce travail, on regarde les données d'un sous-ensemble des étudiants de 8ème année ayant participé au \textit{Nationnal Educationnal Longitudinal Study} de 1988. L'objectif de cette étude est de voir comment les résultats en mathématiques varient en fonction du nombre d'heures de travail à la maison (variable \texttt{homework} dans la base de données).
+	Pour la première question de ce travail, on s'intéresse aux données d'un sous-ensemble des étudiants de 8ème année ayant participé au \textit{Nationnal Educationnal Longitudinal Study} de 1988. L'objectif de cette étude est de voir comment les résultats en mathématiques varient en fonction du nombre d'heures de travail à la maison (variable \texttt{homework} dans la base de données).
 	Dans ce cas-ci, on a que la variable endogène $Y_{ij}$ correspond au résultat de l'examen de mathématique de l'étudiant $j$, appartenant à l'école $i$, $i=1,\dots, 23$, $j=1,\dots,n_i$, où $n_i$ correspond au nombre d'étudiants appartenant à la $i$-ème grappe. Dans la base de données, cette variable est désignée comme \texttt{math}.\\
 	
 	Comme la variable explicative \texttt{meanses}, correspondant au statut socio-économique moyen des étudiants de l’école, est fortement corrélée avec l'école d'origine des étudiants (variable de grappe), alors on est intéressé de voir quelle différence il y aurait entre un LMM avec et sans cette variable et de voir si le besoin d'effets aléatoires dans le modèle persiste si on ajoute cette dernière.
@@ -216,7 +216,7 @@ L'objet de ce travail pratique est de mettre en pratique ces deux modèles. Ains
 				Y_{ij} &= \beta_0 + \beta_1 \mathrm{homework} + \beta_2 \mathrm{white} + \beta_3 \mathrm{ratio^*} + \beta_4 \mathrm{ratio2} + \epsilon_{ij}.
 		\end{align}
 		Si on refait l'exercice du GAM, on trouve l'illustration \ref{Spline_lm2}. Dans celle-ci, on remarque qu'aucune transformation additionnelle n'est nécessaire.
-		Si on se fie à la statistique $F$ produite par la fonction \texttt{summary} en \texttt{R}, alors on trouve que la seule non-linéarité qui soit significative au seuil de 5\% est celle de la variable \texttt{homework}. Cependant, par soucis de simplicité, celle-ci ne sera pas modifiée. Par la suite, on peut tenter d'ajouter des interactions.
+		Si on se fie à la statistique $F$ produite par la fonction \texttt{summary} en \texttt{R}, alors on trouve qu'aucune autre transformation n'est significative au seuil de 1\%. Par la suite, on peut tenter d'ajouter des interactions.
 		Au seuil de 5\%, les interactions ajoutées sont \texttt{white:ratio} et \texttt{white:ratio2}, ce qui permet d'obtenir le modèle \eqref{lm_3}
 		\begin{align}\label{lm_3}
 			Y_{ij} &= \beta_0 + \beta_1 \mathrm{homework} + \beta_2 \mathrm{white} + \beta_3 \mathrm{ratio^*} + \beta_4 \mathrm{ratio2}\\
@@ -228,12 +228,12 @@ L'objet de ce travail pratique est de mettre en pratique ces deux modèles. Ains
 	\subsubsection*{Entraînement d'un modèle linéaire mixte}
 		Maintenant qu'un modèle linéaire a été entraîné et que l'on a observé la nécessité d'y inclure des effets aléatoires pour tenir compte de la corrélation qui existe entre les élèves d'une même école, il est temps d'entraîner un LMM.\\
 		
-		Pour se faire, la première étape est de faire les graphiques des résidus en fonction des différentes variables pour voir sur lesquelles d'entre elles il serait intéressant appliquer un effet aléatoire. Bien que cela soit difficile à voir, l'illustration \ref{Residus_VS_variables_lm3} montre que la variable la plus susceptible d'avoir un effet aléatoire est \texttt{homework} puisqu'elle est celle ayant le plus de volatilité dans la distribution des résidus selon les valeurs qu'elle peut prendre. Ainsi, avec la fonction \texttt{lmer} du \texttt{package R lme4}, on entraîne le modèle \eqref{lmm_1} avec les structures de variance VC\footnote{\textit{Variance Components}: indépendance entre les termes de résidus.} pour la variance des résidus et UN\footnote{\textit{Unstructured}: il existe une corrélation entre les effets aléatoires.}, de même que UN(1)\footnote{\textit{Diagonales principales}: les effets aléatoires sont indépendants l'un de l'autre.} pour la variance des effets aléatoires.
+		Pour se faire, la première étape est de faire les graphiques des résidus en fonction des différentes variables pour voir sur lesquelles d'entre elles il serait intéressant appliquer un effet aléatoire. Bien que cela soit difficile à voir, l'illustration \ref{Residus_VS_variables_lm3} montre que la variable la plus susceptible d'avoir un effet aléatoire est \texttt{homework} puisqu'elle est celle ayant le plus de volatilité dans la distribution des résidus selon les valeurs qu'elle peut prendre. Ainsi, avec la fonction \texttt{lmer} du \texttt{package R lme4}, on entraîne le modèle \eqref{lmm_1} avec les structures de variance VC\footnote{\textit{Variance Components}: indépendance entre les résidus.} pour la variance des résidus et UN\footnote{\textit{Unstructured}: chaque combinaison d'effets aléatoires a un coefficient de corrélation différent.}, de même que UN(1)\footnote{\textit{Diagonales principales}: les effets aléatoires sont indépendants l'un de l'autre.} pour la variance des effets aléatoires.
 		\begin{align}\label{lmm_1}
 			Y_{ij} &= \beta_0+\gamma_{i0} + (\beta_1 + \gamma_{i1}) \mathrm{homework} + \beta_2 \mathrm{white} + \beta_3 \mathrm{ratio^*} \\
 			&+ \beta_4 \mathrm{ratio2} + \beta_5( \mathrm{white:ratio^*}) + \beta_6 (\mathrm{white:ratio2}) + \epsilon_{ij}. \nonumber
 		\end{align}
-		À noter que l'ajout de trop d'effets aléatoires dans le modèle testé peut entraîner de l'instabilité numérique lors de l'entraînement de celui-ci. C'est pourquoi on se limite à deux effets aléatoires dans le modèle \eqref{lmm_1}.\\
+		À noter que l'ajout de trop d'effets aléatoires dans le modèle testé peut entraîner de l'instabilité numérique lors de l'entraînement de celui-ci. C'est pourquoi on se limite à deux effets aléatoires dans le modèle \eqref{lmm_1}. Pour la même raison, si l'effet fixe est trop complexe (trop de termes d'ordre supérieur), la méthode ne convergera pas. C'est pourquoi les interactions trouvées plus tôt ont été sélectionnées selon la méthode algorithmique de type \textit{forward} avec un seuil de test de 5\%.\\
 		
 		En ce qui attrait à la structure de variance des résidus de type CS\footnote{\textit{Compound symmetry}: la corrélation entre les résidus est la même partout.}, comme la fonction \texttt{lmer} ne permet pas de l'utiliser, on peut faire appel à la fonction \texttt{lme} du \textit{package} \texttt{nlme}.
 		%
@@ -301,20 +301,20 @@ L'objet de ce travail pratique est de mettre en pratique ces deux modèles. Ains
 		D'autre part, on a 
 		\begin{align}
 			\boldsymbol{D}_i = \var(\boldsymbol{\gamma}_i) = 
-			\begin{bmatrix}
+			\begin{pmatrix}
 				58.20797 & -27.01225 \\
 				-27.01225& 17.25707  \\
-			\end{bmatrix},
+			\end{pmatrix},
 			i=1,\dots,23
 			%
 			\; \text{ et }\;
 			\boldsymbol{D} = 
-			\begin{bmatrix}
+			\begin{pmatrix}
 				D_1 & 0 & \dots & 0 \\
 				0 & D_2 & 0 & \vdots \\
 				\vdots & 0 & \ddots & 0 \\
 				0 & \dots & 0 & D_{23}
-			\end{bmatrix}
+			\end{pmatrix}
 		\end{align}
 		De plus,
 		\begin{align}
@@ -348,7 +348,7 @@ L'objet de ce travail pratique est de mettre en pratique ces deux modèles. Ains
 			Y_{ij} = \beta_0 + \gamma_{i0} + \beta_1 \mathrm{meanses} + (\beta_2 + \gamma_{i2}) \mathrm{homework} + \beta_3\mathrm{white} + \epsilon_{ij}.
 		\end{equation}
 		Si on essaie d'intégrer l'interaction \texttt{meanses:homework}, on trouve un seuil de test de 0.7368; on ne l'inclue donc pas dans le modèle.		
-		La sortie \texttt{R} de la fonction \texttt{summary} appliquée sur le modèle ainsi obtenu est présentée dans l'illustration \ref{summary_Qst1b}. Les effets fixes sont décrits dans le tableau \ref{tbl_effets_fixes_qst1b} et les matrices de variances sont présentées dans \eqref{matrice_D_qst1b} et \eqref{matrice_V_qst1b}, lesquelles sont exactement les mêmes que dans la section \ref{Qst1_a}.
+		La sortie \texttt{R} de la fonction \texttt{summary} appliquée sur le modèle ainsi obtenu est présentée dans l'illustration \ref{summary_Qst1b}. Les effets fixes sont décrits dans le tableau \ref{tbl_effets_fixes_qst1b} et les matrices de variances sont présentées dans \eqref{matrice_D_qst1b} et \eqref{matrice_V_qst1b}, lesquelles sont très similaires que dans la section \ref{Qst1_a}.
 		\begin{table}[ht]
 			\centering
 			\begin{tabular}{lrrrr}
@@ -367,37 +367,38 @@ L'objet de ce travail pratique est de mettre en pratique ces deux modèles. Ains
 		%
 		\begin{align}\label{matrice_D_qst1b}
 			\boldsymbol{D}_i = \var(\boldsymbol{\gamma}_i) = 
-			\begin{bmatrix}
-				58.20797 & -27.01225 \\
-				-27.01225& 17.25707  \\
-			\end{bmatrix},
+			\begin{pmatrix}
+				53.57617 & -27.00012 \\
+				-27.00012& 16.39948  \\
+			\end{pmatrix},
 			i=1,\dots,23
 			%
 			\; \text{ et }\;
 			\boldsymbol{D} = 
-			\begin{bmatrix}
+			\begin{pmatrix}
 				D_1 & 0 & \dots & 0 \\
 				0 & D_2 & 0 & \vdots \\
 				\vdots & 0 & \ddots & 0 \\
 				0 & \dots & 0 & D_{23}
-			\end{bmatrix}
+			\end{pmatrix}
 		\end{align}
 		%
 		\begin{align}\label{matrice_V_qst1b}
 			\boldsymbol{V} = \var(\boldsymbol{\epsilon}) = 
-			52.66\, \boldsymbol{I}_{n\times n},
+			52.79033\, \boldsymbol{I}_{n\times n},
 			\ n=\sum_{i=1}^{23} n_i = 519.
 		\end{align}
 	\subsubsection*{Discussion}
 		Comme on a pu l'observer avec l'illustration \ref{residus_VS_id_qst1b}, l'ajout de la variable \texttt{meanses} qui est très fortement corrélée avec les identifiants des écoles (les grappes) a réduit considérablement le besoin d'ajouter des effets aléatoires au modèle puisque les résidus sont maintenant centrés autour de zéro. Néanmoins, avec le test du ratio des vraisemblances, on a pu voir que l'effet aléatoire appliqué à la variable \texttt{homework}, de même que l'ordonnée à l'origine aléatoire, sont utiles.\\
 		
-		Au final, on trouve que l'ajout d'une heure supplémentaire d'étude augmente, en moyenne, l'espérance de la note en mathématique de 1.925\% et cet effet varie d'une école à l'autre (effet aléatoire).
+		Au final, on trouve qu'une personne qui n'a pas étudié peut espérer, en moyenne, une note de 44.70\%. Cette moyenne augmente à 47.81\% pour une personne de couleur blanche et elle augmente encore d'avantage si l'élève est issu d'un milieu aisé. Finalement, l'ajout d'une heure supplémentaire d'étude augmente, en moyenne, l'espérance de la note en mathématique de 1.925\% et cet effet varie d'une école à l'autre (effet aléatoire).
+		
 	
 \section{Modèle linéaire mixte pour la grandeur de jeunes filles}
-	Pour cette deuxième question, le jeu de données à l'étude présente 20 courbes de la croissance de jeunes filles mesurées annuellement entre les âges 6 à 10 ans. Celui-ci a été publié par Gildstein (1979). Dans ce cas-ci, la variable endogène $Y_{ij}$ correspond à la taille de la $i-ème$ fille lors de sa $j$-ème mesure à l'âge $5+j$, $i=1,\dots,20,\ j=1,\dots,5$.
+	Pour cette deuxième question, le jeu de données à l'étude présente 20 courbes de la croissance de jeunes filles mesurées annuellement entre les âges 6 à 10 ans. Celui-ci a été publié par Gildstein (1979). Dans ce cas-ci, la variable endogène $Y_{ij}$ correspond à la taille de la $i$-ème fille lors de sa $j$-ème mesure à l'âge $5+j$, $i=1,\dots,20,\ j=1,\dots,5$. On cherche ici à déterminer si la grandeur de la mère de l'enfant (représentée par la variable \texttt{group}) influence la grandeur de la fille.
 	
 	\subsubsection*{Entraînement d'un modèle linéaire}
-		Afin de voir si la relation qui existe entre l'âge des petites filles et leur grandeur est linéaire, on regarde l'illustration \ref{Grandeur_VS_age_Qst2}. Comme celle-ci l'est effectivement, on entraîne le modèle \eqref{lm_qst2_1}.
+		Afin de voir si la relation qui existe entre l'âge des jeunes filles et leur grandeur est linéaire, on regarde l'illustration \ref{Grandeur_VS_age_Qst2}. Comme celle-ci l'est effectivement, on entraîne le modèle \eqref{lm_qst2_1}.
 		\begin{equation}\label{lm_qst2_1}
 			Y_{ij} = \beta_0 + \beta_1 \mathrm{age} + \beta_2 \mathrm{group_2} + \beta_3 \mathrm{group_3} + \beta_4 (\mathrm{group_2:age}) + \beta_5 (\mathrm{group_3:age}) + \epsilon_{ij}.
 		\end{equation}
@@ -434,14 +435,14 @@ L'objet de ce travail pratique est de mettre en pratique ces deux modèles. Ains
 			\caption{AIC des trois modèles testés en fonction de \eqref{lmm_qst2_1} avec le nombre de degrés de liberté $dl$ associé à chacun d'eux.}
 			\label{tbl_AIC_Qst2}
 		\end{table}
-	On voit avec le tableau \ref{tbl_AIC_Qst2} que la structure de variance la plus appropriée selon le critère de l'AIC pour le modèle \eqref{lmm_qst2_1} est AR(1)/UN. Plus encore, le coefficient de corrélation liant les résidus d'une même fillette est de 0.9041, ce qui est hautement significatif. De plus, la matrice des coefficients de corrélation des effets aléatoire s'exprime comme
+	On voit avec le tableau \ref{tbl_AIC_Qst2} que la structure de variance la plus appropriée selon le critère de l'AIC pour le modèle \eqref{lmm_qst2_1} est AR(1)/UN. De plus, le coefficient de corrélation liant les résidus d'une même fillette est de 0.9041, ce qui est hautement significatif. Plus encore, la matrice des coefficients de corrélation des effets aléatoire s'exprime comme
 	$$
 		\boldsymbol{\rho}(\boldsymbol{\gamma}_i) = 
-		\begin{bmatrix}
+		\begin{pmatrix}
 			1 & 0.380 & -0.147 \\
 			0.380 & 1 & -0.813 \\
 			-0.147 & -0.813 & 1
-		\end{bmatrix},\ i=1,\dots, 20.
+		\end{pmatrix},\ i=1,\dots, 20.
 	$$
 	Ainsi, la structure de variance non structurée (UN) est justifiée pour les effets aléatoires puisque les coefficients de corrélations sont significativement différents de zéro.\\
 	
@@ -477,19 +478,19 @@ L'objet de ce travail pratique est de mettre en pratique ces deux modèles. Ains
 	et
 	\begin{equation}\label{matrices_V_qst2}
 		\boldsymbol{V}_i = 
-		\begin{bmatrix}
+		\begin{pmatrix}
 			2.988 & 2.838 & 2.696 & 2.560 & 2.432 \\
 			2.838 & 2.988 & 2.838 & 2.696 & 2.560 \\
 			2.696 & 2.838 & 2.988 & 2.838 & 2.696 \\
 			2.560 & 2.696 & 2.838 & 2.988 & 2.838 \\
 			2.432 & 2.560 & 2.696 & 2.838 & 2.988
-		\end{bmatrix}, \ i=1,\dots,20,\ 
-	\boldsymbol{V} = \begin{bmatrix}
+		\end{pmatrix}, \ i=1,\dots,20,\ 
+	\boldsymbol{V} = \begin{pmatrix}
 		V_1 & 0 & \dots & 0 \\
 		0 & V_2 & 0 & \vdots \\
 		\vdots & 0 & \ddots & 0 \\
 		0 & \dots & 0 & V_{20}
-	\end{bmatrix}
+	\end{pmatrix}
 	\end{equation}
 			
 	\subsubsection*{Discussion}
@@ -509,65 +510,111 @@ L'objet de ce travail pratique est de mettre en pratique ces deux modèles. Ains
 			\caption{Mesures moyennes(en cm) pour une petite fille qui est née en 1973 selon la grandeur de la mère.}
 			\label{tbl_interpretation_qst2}
 		\end{table}
-		Avec la matrice $\boldsymbol{D}$ obtenue en \eqref{matrices_D_qst2}, on voit que l'effet aléatoire tend à être dégénérée puisque sa variance tend vers zéro. En somme, on peut résumer l'effet aléatoire $\gamma_{i0}$ comme une constante, soit 0. Néanmoins, le modèle mixte est utile puisqu'il fait un ajustement sur la variance des prévisions pour tenir compte de la corrélation entre les mesures d'une même petite fille.
-		On a donc $\boldsymbol{Y}_{i} \sim N(\boldsymbol{X}_{i}'\boldsymbol{\beta}, \boldsymbol{V}_i)$ où les composantes de la matrice $\boldsymbol{\beta}$ sont définis dans le tableau \ref{tbl_effets_fixes_qst2} et $\boldsymbol{V}_i$ est défini en \eqref{matrices_V_qst2}.\\
-		
+				
 		À la lumière de ces résultats, on peut répondre à la question de Goldstein (1979) en affirmant que oui, la croissance des filles est liée à la taille de la mère.
 		L'interaction \texttt{group:temps} qui est significative au seuil de 0.001731 en atteste et les résultats du tableau \ref{tbl_interpretation_qst2} l'illustre bien.
 		
 
 \section{GEE pour le nombre d'auto-administrations de doses analgésiques}
 
-Cette question a comme objectif d'utiliser un GEE afin de modèlisé une étude sur effet d'addiction de doses analgésique. Les données contiennent $i = 1, \dots, 65$ patients sur $j=1,\dots,12$ période de 4 heurs. Les patients sont ensuite divisé en deux groupes, une avec une dose de 1 mg, soit $x_i =0$ et une avec une dose de 2 mg de morphine, soit $x_i =1$. On définit donc un modèle de dénombrement complet comme
-$$Y_{ij} = \beta_0 + \beta_1 x_i + \beta_2 t_j+ \beta_3 x_i t_j,$$
-avec $Y_{ij}$ le nombre de dose auto-administré dans l'intervalle de temps $t_j$. 
+	Cette question a comme objectif d'utiliser un GEE afin de modéliser l'effet addictif des analgésiques auto-administrés par des patients suite à une chirurgie à l'abdomen. 
+	Pour ce contexte, la variable endogène $Y_{ij}$ représente le nombre de doses auto-administrées par le $i$-ème patient lors de la $j$-ème période de 4 heures de l'étude, $i = 1, \dots, 65$, $j=1,\dots,12$. Les patients sont divisés en deux groupes: l'un qui reçoit une dose de $1\,$mg par injection ($x_i =0$) et l'autre qui reçoit $2\,$mg de morphine ($x_i =1$). 
 	
-	\subsection{Modèle linéaire généralisé}
-	
-	Dans ce contexte on peut utiliser un modèle de régression Poisson. Sachant que les $Y_{ij}$ pour tout $j$ sont dépendents entre eux, on ne peut pas simplement utiliser un GLM. Afin de tenir compte de cette dépendance à l'intérieur des grappes, on va utiliser un modèle linéaire généralisé. 
-	
-	On a tester plusieurs différents matrices de corrélation de travail: La non structuré (UN), la autorégressive (AR1),la structure échangeable et finalement la structure d'indépendance. On suppose que la drogue un impact à court terme. Les administrations de drogue les plus recents sont les plus importants et sont donc plus correllés. De ce fait, l'impacte se degrade dans le temps. Selon cette hypothese le model avec AR(1) serait le plus approprié.
-	On obtient pour la première ligne de la matrice 
+	\subsection{Entraînement du modèle GEE}
+	Comme il s'agit d'un modèle de dénombrement, la famille de GLM qui est la plus appropriée est la loi de Poisson et son lien canonique est le lien logarithmique. On définit ainsi le modèle complet comme
+	\begin{equation}\label{model_GEE}
+		\mu_{ij} = \exp\left\{\beta_0 + \beta_1 x_i + \beta_2 j+ \beta_3 x_i j\right\}, \quad Y_{ij}|x_i \sim \mathrm{Poisson}(\mu_{ij})
+	\end{equation}
+	Cependant, comme il a été mentionné en introduction, les modèles de type GLM supposent que toutes les observations d'un jeu de données sont indépendantes l'une de l'autre. Or, comme les 780 observations du jeu de données sont réparties en 65 grappes d'observations corrélées (puisqu'elles proviennent d'un même patient), alors cette hypothèse n'est plus valide. Il faut donc ajuster le modèle de régression à cette réalité avec un GEE. Pour se faire, la fonction \texttt{gee} du \textit{package} \texttt{R} du même nom permet de réaliser l'entraînement du modèle et de calculer les différentes quantités dont nous aurons besoin.\\
+
+	L'entraînement d'un tel modèle débute par la sélection de la matrice de corrélation de travaille.
+	Comme la taille des grappes $\{n_i\}_{i=1}^K$ est relativement petit et est égal pour chacune des grappes ($n_i=12\ \forall i$), alors une façon efficace de sélectionner la structure adéquate est de commencer par entraîner un modèle avec une matrice non structurée (UN) pour avoir un aperçu des corrélations empiriques. Puis, si on ne voit aucun schéma dans cette matrice, on peut simplement la conserver. Si on voit que les corrélations sont très près de zéro, on utilisera la structure d'indépendance. Si la corrélation semble uniforme pour tous les couples d'observation $\{(j, j');\ j,j'=1,\dots,12,\ j \neq j'\}$, on sélectionnera la structure échangeable. Finalement, si les coefficients de corrélation semblent s'atténuer au fil des observations d'une même grappe, alors on pourra considérer la structure auto-régressive d'ordre 1 (AR(1)).
+	Pour le cas présent, on présente la matrice des corrélations pour les 6 premières observations parmi les 12 de chacune des grappes dans \eqref{matrice_correlation_UN}.
+	\begin{equation}\label{matrice_correlation_UN}
+		R_i(\alpha)^{\mathrm{UN}}_{[1:6, 1:6]} =
+		\begin{pmatrix}
+			1.000 & 0.478 & 0.447 & 0.349 & 0.635 & 0.313 \\
+			0.478 & 1.000 & 0.431 & 0.381 & 0.264 & 0.135 \\
+			0.447 & 0.431 & 1.000 & 0.733 & 0.503 & 0.432 \\
+			0.349 & 0.381 & 0.733 & 1.000 & 0.651 & 0.518 \\
+			0.635 & 0.264 & 0.503 & 0.651 & 1.000 & 0.651 \\
+			0.313 & 0.135 & 0.432 & 0.518 & 0.651 & 1.000
+		\end{pmatrix}
+	\end{equation}
+	Ainsi, on voit que la corrélation tend à diminuer lorsque les observations sont distancées. Conséquemment, la structure de corrélation de type auto-régressive d'ordre 1 serait appropriée. Par ailleurs, ce résultat est peu surprenant puisque les observations d'une grappe correspondent à des périodes de temps pouvant être ordonnancées chronologiquement et l'interprétation de ce résultat est cohérent dans l'optique où l'état du patient a évolué dans le temps, de même que son niveau de dépendance. C'est donc ce type de matrice de corrélation de travail qui est choisit pour la suite. En entraînant le GEE avec cette structure, on obtient un coefficient de corrélation, ici dénoté $\alpha$, qui vaut 0.5164258.
+	De ce fait, la matrice de corrélation de travail s'exprime comme
+	\begin{equation}
+		R_i(\alpha)^{\mathrm{AR(1)}} =
+		\begin{pmatrix}
+			1 		     & \alpha 		 & \dots  & \alpha^{11} \\
+			\alpha       & 1 	  	 	 & \ddots & \vdots \\
+			\vdots       & \ddots 	 	 & \ddots & \alpha \\
+			\alpha^{11} & \dots  & \alpha    & 1
+		\end{pmatrix},\
+	i=1,\dots,65,\ \alpha=0.5164258295.
+	\end{equation}
+	La première ligne de cette matrice correspond donc à
+	\setcounter{MaxMatrixCols}{20}
 	$$
-	R_i(\alpha) = 
+	R_i(\alpha)_{[1, 1:12]}^{\mathrm{AR(1)}} = 
 	\begin{pmatrix}	
-	1.000000000 & 0.516425829 & 0.266695637 & 0.137728516 & 0.071126563 & 0.03673159 & 0.01896914  \\
-	0.009796156 & 0.005058988 & 0.002612592 & 0.001349210 & 0.0006967669
+		1.000 & 0.516 & 0.267 & 0.138 & 0.071 & 0.037 & 0.019 & 0.010 & 0.005 & 0.003 & 0.001 & 0.001
 	\end{pmatrix}
 	.$$
-	Ce qui implique un $\alpha = 0.516425829$. 
 	
-	Il y a que deux variables exogènes dans le modèle, on fait des testes chi-carrées pour valider leur importance statistique. On commence avec l'interaction $x_i$ et $t_j$. La valeur-p avec 1 degrée de liberté est 0.13. Donc on ne peut pas rejeter $H_0$ et donc on écarte l'interaction. On fait pareille pour $\beta_1$ et $\beta_2$. On obtient 0.015 et 0.0 respectivement, ce qui conclue qu'on garde les deux variables, pusiqu'on rejette $H_0$. Le
-	modèle final est donc 
-	$$Y_{ij} = \beta_0 + \beta_1 x_i + \beta_2 t_j .$$
-	Les paramètres sont 
-	$$\beta = \begin{pmatrix}
-	\beta_0 \\ 
-	\beta_1 \\
-	\beta_2
+	Il ne reste plus qu'à effectuer la sélection des variables explicatives. D'abord, on a
+	\begin{equation}
+		\hat{\boldsymbol{\beta}} \approx N(\boldsymbol{\beta}, \boldsymbol{V_S}),
+	\end{equation}
+	où $\boldsymbol{V_S}$ est la matrice de variance robuste. Cette dernière est calculée par la fonction \texttt{gee} et la racine carrée des composantes de sa diagonale son présentées dans l'attribut \texttt{coefficients}, dans la colonne \texttt{Robust S.E.}
+	Sous l'hypothèse nulle que les coefficients de régression valent zéro, alors la statistique de test pour la $l$-ème variable explicative du modèle \eqref{model_GEE} correspond à \eqref{eq_statistique_Wald_GEE}.
+	\begin{equation}\label{eq_statistique_Wald_GEE}
+		z_l = \frac{\hat{\beta}_l}{\sqrt{V_{ll}}},\ l=0,1,2,3,
+	\end{equation}
+	où	$V_{ll}$ correspond à la composante de la diagonale de la matrice $\boldsymbol{V_S}$ assignée à la $l$-ème variable explicative. Cette statistique est calculée par la fonction \texttt{gee} et est présentée également avec l'attribut \texttt{coefficients} dans la colonne \texttt{Robust z}. Ainsi, avec ces outils en main, il est aisé de calculer le seuil observé du test pour vérifier l'hypothèse nulle que la $l$-ème variable explicative est inutile à la régression. Pour se faire, il suffit d'utiliser \eqref{pvalue_Wald} pour effectuer un test bilatéral.
+	\begin{equation}\label{pvalue_Wald}
+		p\mathrm{-value} = 2\P\left[N(0,1)>|z_l|\right]
+	\end{equation}
+	
+	Ainsi, avec \eqref{pvalue_Wald}, on trouve que le seuil observé du test est de 0.4265 pour la variable $x_i$, assignée au groupe de dosage et de 0.1299 pour l'interaction entre les deux variables explicative.
+	Comme pour les questions précédentes du présent travail, on ne peut retirer une variable qui est utilisée pour une interaction avant d'avoir retiré la dite interaction. Conséquemment, c'est cette dernière qui est retirée en premier. En repassant le test sur le modèle ajusté (sans l'interaction), on trouve désormais que la seuil observé de la variable $x_i$ est descendu à 0.0147. On la conserve donc au seuil de 5\%. La variable $j$ (assignée à la période du traitement), quant à elle, possède un seuil observé de zéro. 
+	Le modèle final est donc présenté en \eqref{model_GEE_final}.
+	\begin{equation}\label{model_GEE_final}
+		\mu_{ij} = \exp\left\{\beta_0 + \beta_1 x_i + \beta_2 j\right\}
+	\end{equation}
+	et les estimateurs des paramètres de régression sont 
+	$$
+	\hat{\beta} =
+	 \begin{pmatrix}
+		\hat{\beta}_0 \\ 
+		\hat{\beta}_1 \\
+		\hat{\beta}_2
 	\end{pmatrix}
 	 = \begin{pmatrix}
-	2.05378263  \\
-	0.30742284 \\
-	-0.06091784
-	\end{pmatrix}$$
-	Il semble qu'augmenter la dose à 2mg a une relation positive avec le nombre de dose administré. Le temps a une relation inverse et diminue l'espérance de 5\% à chaque 4 heurs écoulés ($j$ augmente).  
+		2.05378263  \\
+		0.30742284 \\
+		-0.06091784
+	\end{pmatrix}.
+	$$
+	À la lumière de ces résultats, on observe qu'un patient qui reçoit la dose minimale (1 mg) commencera par s'administrer, en moyenne, environ 7 doses. Pour une personne qui reçoit 2 mg par dose, elle débutera, en moyenne, avec près de 10 doses.
+	Puis, dans les deux cas, la demande moyenne en dose diminue de 94.09\% à toutes les périodes de 4 heures.
+
+	
 	\subsection{Prédiction pour la population}
-	On fait une estimation ponctuelle pour $ x_i = 1$ et $t_j =5$. On obtient 
-	$$\eta = c \beta = 
-	\begin{pmatrix}
-	1 & 1& 5
-	\end{pmatrix}
-	\begin{pmatrix}
-	2.05378263  \\
-	0.30742284 \\
-	-0.06091784
-	\end{pmatrix} = 2.056616,$$
-	avec un intervalle de confiance 95\% de
-	$$ (1.87615, 2.237077).$$
-	Pour $E[Y_{i5}]$ on arrive à $7.819466$ dans un intervalle de confiance de $(6.528357, 9.365917)$
-	L'effet de la dose pour la population est de $0.3074228$ avec un intervalle de confiance de $(0.06038578, 0.55445990)$. Ainsi augmenter la dose à 2mg augmente en moyenne le nombre d'administrations de 35\% avec
-	IC entre $ (6\%, 74\%).$
+	On désire désormais donner un estimé ponctuel et un intervalle de confiance à 95\% pour l’effet moyen de la dose dans cette population de patients.	
+	Pour se faire, on définit le vecteur $c' = \begin{pmatrix} 0 & 1 & 0\end{pmatrix}$. Puis on calcule la prédiction pour le prédicteur linéaire avec	\eqref{estim_predicteur_lineair}.
+	\begin{equation}\label{estim_predicteur_lineair}
+		\hat{\eta} = c'\hat{\boldsymbol{\beta}}.
+	\end{equation}
+	Par la suite, on trouve l'intervalle de confiance pour $\eta$ avec \eqref{IC_eta}.
+	\begin{equation}\label{IC_eta}
+		\eta \in \hat{\eta} \pm z_{0.975} \sqrt{c' \boldsymbol{V_S} c }.
+	\end{equation}
+	Finalement, l'estimé ponctuel et l'intervalle de confiance pour l'effet moyen de la dose est trouvé en portant $\hat{\eta}$ ainsi que son intervalle de confiance à l'exposant. De cette manière, on obtient
+	un effet moyen de 1.359916 avec un intervalle de confiance à 95\% de 
+	$\begin{pmatrix}1.062251 & 1.740993\end{pmatrix}$. En conclusion, le fait d'avoir une dose de $2\,$mg augmente la demande moyenne en doses de 36\% par rapport à quelqu'un qui reçoit des doses de $1\,$mg. Cet effet peut varier entre 6\% et 74\%.
+
+	
 	
 \newpage
 \appendix
@@ -736,9 +783,6 @@ avec $Y_{ij}$ le nombre de dose auto-administré dans l'intervalle de temps $t_j
 	\caption{Sortie \texttt{R} de la fonction \texttt{summary} pour le modèle \eqref{lmm_qst2_final}.}
 	\label{summary_Qst2}
 \end{figure}
-
-
-\subsection{Question 3}
 
 	
 \end{document}
